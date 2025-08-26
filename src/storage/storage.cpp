@@ -11,9 +11,9 @@ void Storage::saveGame(const Game& game, const std::string& filename) {
         saveFile << game.player.y << std::endl;
         saveFile << game.player.health << std::endl;
         saveFile.close();
-        Display::showMessage("Game saved successfully.");
+        // Display::showMessage("Game saved successfully.");
     } else {
-        Display::showMessage("Error: Unable to save game.");
+        // Display::showMessage("Error: Unable to save game.");
     }
 }
 
@@ -25,9 +25,9 @@ void Storage::loadGame(Game& game, const std::string& filename) {
         loadFile >> game.player.y;
         loadFile >> game.player.health;
         loadFile.close();
-        Display::showMessage("Game loaded successfully.");
+        // Display::showMessage("Game loaded successfully.");
     } else {
-        Display::showMessage("Error: Unable to load game. Starting a new game.");
+        // Display::showMessage("Error: Unable to load game. Starting a new game.");
         game.initialize();
     }
 }

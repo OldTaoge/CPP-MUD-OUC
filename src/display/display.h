@@ -1,10 +1,8 @@
 #pragma once
-#include "../player/player.h"
-#include <iostream>
+#include "../core/game.h"
+#include <ftxui/component/screen_interactive.hpp> // 引入FTXUI头文件
 
 class Display {
 public:
-    static void clearScreen();
-    static void render(const Player& player);
-    static void showMessage(const std::string& message);
+    static void gameLoop(Game& game);
 };

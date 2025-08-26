@@ -1,26 +1,32 @@
-#include "Game.h"
+#include "game.h"
 #include "../display/display.h"
-#include "../interaction/interaction.h"
 
-Game::Game() : player("Hero", 5, 5, 100), isRunning(false) {}
+Game::Game()
+    : player("Hero", 5, 5, 100), isRunning(false) {
+    // 初始化菜单选项
+    main_options = {
+        "Move North (W)",
+        "Move West (A)",
+        "Move South (S)",
+        "Move East (D)",
+        "---", // 分隔符
+        "Save Game",
+        "Load Game",
+        "---",
+        "Exit",
+    };
+}
 
 void Game::initialize() {
     isRunning = true;
-    // 初始化游戏世界，加载地图等
+    // 其他初始化...
 }
 
-void Game::update() {
-    // 游戏逻辑更新，例如NPC移动、事件触发等
+void Game::quit() {
+    isRunning = false;
 }
 
 void Game::run() {
     initialize();
-    Display::clearScreen();
-
-    while (isRunning) {
-        Display::render(player);
-        std::string command = Interaction::getCommand();
-        Interaction::processCommand(command, *this);
-        update();
-    }
+    Display::gameLoop(*this); // 将游戏主循环交给Display模块
 }

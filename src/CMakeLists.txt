@@ -11,11 +11,16 @@ add_executable(CPP_MUD_OUC core/main.cpp
         core/game.cpp
         core/game.h
         display/display.cpp
-        display/display.h
+        display/display.hpp
         storage/storage.cpp
         storage/storage.h
         interaction/interaction.cpp
-        interaction/interaction.h)
+        interaction/interaction.h
+        loader/loader.cpp
+        loader/loader.h)
+
+target_include_directories(CPP_MUD_OUC PRIVATE vendor)
+
 
 
 target_link_libraries(CPP_MUD_OUC

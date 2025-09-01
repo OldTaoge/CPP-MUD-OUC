@@ -8,16 +8,19 @@
 
 class ScreenMainMenu : public BaseScreen {
 public:
-    // 构造函数接收一个回调，当用户做出选择时会调用这个回调
-    explicit ScreenMainMenu(std::function<void(int)> on_selection);
+    // 构造函数不再需要回调参数
+    ScreenMainMenu();
 
     // 实现基类的虚函数
     ftxui::Component GetComponent() override;
 
 private:
+    void HandleSelection(int selected_option);
+    
     ftxui::Component component_;
     std::vector<std::string> entries_;
     int selected_ = 0;
+    ftxui::Element title_element_; // 缓存标题元素
 };
 
 

@@ -21,7 +21,11 @@ add_executable(CPP_MUD_OUC core/main.cpp
         display/screens/mainmenu.cpp
         display/screens/mainmenu.hpp
         display/screens/illustrateMenu.cpp
-        display/screens/illustrateMenu.hpp)
+        display/screens/illustrateMenu.hpp
+        display/screens/settings.cpp
+        display/screens/settings.hpp
+        utils/utils.cpp
+        utils/utils.hpp)
 
 target_include_directories(CPP_MUD_OUC PRIVATE vendor)
 

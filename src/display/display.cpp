@@ -8,17 +8,32 @@
 #include <sstream> // 用于字符串分割
 
 #include "screens/mainmenu.hpp"
+#include "screens/illustrateMenu.hpp"
+#include "screens/settings.hpp"
 
 using namespace ftxui;
 
 ScreenManager::ScreenManager()
-    : screen_(ScreenInteractive::Fullscreen()), // 使用全屏模式
-      currentScreen_("MainMenu")
+    : screen_(ScreenInteractive::FullscreenPrimaryScreen()), // 使用全屏模式
+      currentScreen_("MainMenu"),
+      shouldQuit_(false)
 {
+    // 创建导航回调
+    auto nav_callback = [this](const NavigationRequest& request) {
+        this->HandleNavigationRequest(request);
+    };
+    
     // 创建MainMenu屏幕实例
-    screens_["MainMenu"] = new ScreenMainMenu(
-        [this](int selected) { this->HandleMainMenuSelection(selected); }
-    );
+    screens_["MainMenu"] = new ScreenMainMenu();
+    screens_["MainMenu"]->SetNavigationCallback(nav_callback);
+    
+    // 创建游戏说明屏幕实例
+    screens_["Illustrate"] = new IllustrateMenu();
+    screens_["Illustrate"]->SetNavigationCallback(nav_callback);
+    
+    // 创建设置屏幕实例
+    screens_["Settings"] = new SettingsScreen();
+    screens_["Settings"]->SetNavigationCallback(nav_callback);
 }
 
 ScreenManager::~ScreenManager() {
@@ -28,31 +43,27 @@ ScreenManager::~ScreenManager() {
     screens_.clear();
 }
 
-void ScreenManager::HandleMainMenuSelection(int selected_option) {
-    switch (selected_option) {
-        case 0:
-            std::cout << "正在启动新游戏..." << std::endl;
+void ScreenManager::HandleNavigationRequest(const NavigationRequest& request) {
+    switch (request.action) {
+        case NavigationAction::SWITCH_SCREEN:
+            currentScreen_ = request.target_screen;
+            screen_.Exit();
+            // screen_ = ScreenInteractive::Fullscreen();
             break;
-        case 1:
-            std::cout << "正在加载游戏..." << std::endl;
-            break;
-        case 2:
-            std::cout << "显示游戏说明..." << std::endl;
-            break;
-        case 3:
-            std::cout << "打开设置菜单..." << std::endl;
-            break;
-        case 4:
+        case NavigationAction::QUIT_GAME:
+            shouldQuit_ = true;
             screen_.Exit();
             break;
     }
 }
 
-
 void ScreenManager::mainloop() {
-    if (screens_.count(currentScreen_)) {
-        screen_.Loop(screens_[currentScreen_]->GetComponent());
-    } else {
-        std::cerr << "Error: Screen '" << currentScreen_ << "' not found!" << std::endl;
+    while (!shouldQuit_) {
+        if (screens_.count(currentScreen_)) {
+            screen_.Loop(screens_[currentScreen_]->GetComponent());
+        } else {
+            std::cerr << "Error: Screen '" << currentScreen_ << "' not found!" << std::endl;
+            break;
+        }
     }
 }

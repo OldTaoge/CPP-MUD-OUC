@@ -8,9 +8,15 @@
 
 class IllustrateMenu : public BaseScreen {
 public:
-    explicit IllustrateMenu(std::function<void(int)> on_select);
+    IllustrateMenu();
 
     ftxui::Component GetComponent() override;
+    
+private:
+    void HandleSelection(int selected_option);
+    
+    ftxui::Component component_;
+    ftxui::Element content_element_; // 缓存内容元素
 };
 
 

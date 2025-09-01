@@ -2,6 +2,8 @@
 // Created by Wentao on 2025/8/31.
 //
 #include <ftxui/component/component.hpp>
+#include "../utils/utils.hpp"
+#include <iostream>
 #include "mainmenu.hpp"
 #include "../display.hpp"
 using namespace ftxui;
@@ -38,20 +40,11 @@ const std::string ascii_art_title = R"(
                                                                    .
 )";
 
-// 辅助函数，用于按行分割字符串
-std::vector<std::string> split_string(const std::string& str) {
-    std::vector<std::string> lines;
-    std::stringstream ss(str);
-    std::string line;
-    while (std::getline(ss, line)) {
-        lines.push_back(line);
-    }
-    return lines;
-}
 
 
 
-ScreenMainMenu::ScreenMainMenu(std::function<void(int)> on_selection) {
+
+ScreenMainMenu::ScreenMainMenu() {
     // 1. 为选项添加数字前缀
     std::vector<std::string> base_entries = {
         "开始新游戏",
@@ -68,41 +61,54 @@ ScreenMainMenu::ScreenMainMenu(std::function<void(int)> on_selection) {
     }
 
     MenuOption option;
-    option.on_enter = [this, on_selection] {
-        on_selection(selected_);
+    option.on_enter = [this] {
+        this->HandleSelection(selected_);
     };
     auto menu = Menu(&entries_, &selected_, option);
+    
+    // 预创建标题元素，避免每次渲染时重新创建
+    auto title_lines = Utils::split_string(ascii_art_title);
+    Elements title_elements;
+    for (const auto& line : title_lines) {
+        title_elements.push_back(text(line));
+    }
+    title_element_ = vbox(std::move(title_elements)) | hcenter;
 
     // 2. 重新设计UI布局
-    component_ = Renderer(menu, [menu] {
-        // --- 开始修改 ---
-        // 将字符画按行分割
-        auto title_lines = split_string(ascii_art_title);
-        // 为每一行创建一个 text 元素，并把它们放入一个垂直容器 (vbox)
-        Elements title_elements;
-        for (const auto& line : title_lines) {
-            title_elements.push_back(text(line));
-        }
-        auto title_vbox = vbox(std::move(title_elements));
-        // --- 结束修改 ---
-
-        // 将标题和菜单组合成一个垂直框
-        auto content_box = vbox({
-            title_vbox | hcenter, // 使用字符画标题
-            text(""),             // 分隔符
-            menu->Render(),
-        });
-
+    component_ = Renderer(menu, [this, menu] {
         // 2.2 使用filler和border实现全屏边框和垂直居中效果
         return vbox({
-                   filler(),                  // 上方的弹性空间
-                   content_box | hcenter,     // 中间的内容 (水平居中)
-                   filler(),                  // 下方的弹性空间
-               }) |
-               border; // 为整个屏幕添加边框
+                    title_element_,        // 使用预创建的标题元素
+                    text(""),             // 分隔符
+                    menu->Render() | hcenter | border,
+               }) | border; // 为整个屏幕添加边框
     });
 }
 
 Component ScreenMainMenu::GetComponent() {
     return component_;
+}
+
+void ScreenMainMenu::HandleSelection(int selected_option) {
+    if (!navigation_callback_) return;
+    
+    switch (selected_option) {
+        case 0:
+            std::cout << "正在启动新游戏..." << std::endl;
+            // TODO: 实际启动新游戏的逻辑
+            break;
+        case 1:
+            std::cout << "正在加载游戏..." << std::endl;
+            // TODO: 实际加载游戏的逻辑
+            break;
+        case 2:
+            navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Illustrate"));
+            break;
+        case 3:
+            navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Settings"));
+            break;
+        case 4:
+            navigation_callback_(NavigationRequest(NavigationAction::QUIT_GAME));
+            break;
+    }
 }

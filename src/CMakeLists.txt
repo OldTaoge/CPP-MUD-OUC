@@ -17,7 +17,11 @@ add_executable(CPP_MUD_OUC core/main.cpp
         interaction/interaction.cpp
         interaction/interaction.h
         loader/loader.cpp
-        loader/loader.h)
+        loader/loader.h
+        display/screens/mainmenu.cpp
+        display/screens/mainmenu.hpp
+        display/screens/illustrateMenu.cpp
+        display/screens/illustrateMenu.hpp)
 
 target_include_directories(CPP_MUD_OUC PRIVATE vendor)
 

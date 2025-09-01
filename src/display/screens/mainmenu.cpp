@@ -3,6 +3,7 @@
 //
 #include <ftxui/component/component.hpp>
 #include "../utils/utils.hpp"
+#include "../window_size_checker.hpp"
 #include <iostream>
 #include "mainmenu.hpp"
 #include "../display.hpp"
@@ -60,11 +61,16 @@ ScreenMainMenu::ScreenMainMenu() {
         entries_.push_back(std::to_string(i + 1) + ". " + base_entries[i]);
     }
 
-    MenuOption option;
-    option.on_enter = [this] {
-        this->HandleSelection(selected_);
-    };
-    auto menu = Menu(&entries_, &selected_, option);
+    // 创建按钮组件而不是菜单组件
+    std::vector<Component> button_components;
+    for (size_t i = 0; i < entries_.size(); ++i) {
+        auto button = Button(entries_[i], [this, i] {
+            this->HandleSelection(i);
+        });
+        button_components.push_back(button);
+    }
+    
+    auto menu_container = Container::Vertical(button_components);
     
     // 预创建标题元素，避免每次渲染时重新创建
     auto title_lines = Utils::split_string(ascii_art_title);
@@ -75,14 +81,17 @@ ScreenMainMenu::ScreenMainMenu() {
     title_element_ = vbox(std::move(title_elements)) | hcenter;
 
     // 2. 重新设计UI布局
-    component_ = Renderer(menu, [this, menu] {
+    auto main_renderer = Renderer(menu_container, [this, menu_container] {
         // 2.2 使用filler和border实现全屏边框和垂直居中效果
         return vbox({
                     title_element_,        // 使用预创建的标题元素
                     separator(),             // 分隔符
-                    hbox(menu->Render() | hcenter) | hcenter |border,
+                    hbox(menu_container->Render() | hcenter) | hcenter |border,
                }) | border; // 为整个屏幕添加边框
     });
+    
+    // 使用窗口大小检测包装主组件
+    component_ = WindowSizeChecker::Make(main_renderer, 120, 50);
 }
 
 Component ScreenMainMenu::GetComponent() {

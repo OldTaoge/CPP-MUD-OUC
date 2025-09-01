@@ -12,6 +12,8 @@ add_executable(CPP_MUD_OUC core/main.cpp
         core/game.h
         display/display.cpp
         display/display.hpp
+        display/window_size_checker.cpp
+        display/window_size_checker.hpp
         storage/storage.cpp
         storage/storage.h
         interaction/interaction.cpp

@@ -19,7 +19,6 @@ private:
     
     ftxui::Component component_;
     std::vector<std::string> entries_;
-    int selected_ = 0;
     ftxui::Element title_element_; // 缓存标题元素
 };
 

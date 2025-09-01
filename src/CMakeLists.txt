@@ -4,7 +4,7 @@ project(CPP_MUD_OUC)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_subdirectory(FTXUI)
+add_subdirectory(FTXUI-src)
 add_executable(CPP_MUD_OUC core/main.cpp
         player/player.cpp
         player/player.h

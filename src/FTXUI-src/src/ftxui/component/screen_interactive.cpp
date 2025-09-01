@@ -415,7 +415,8 @@ CapturedMouse ScreenInteractive::CaptureMouse() {
 /// @brief Execute the main loop.
 /// @param component The component to draw.
 void ScreenInteractive::Loop(Component component) {  // NOLINT
-  class Loop loop(this, std::move(component));
+  // class Loop loop(this, std::move(component);
+  class Loop loop(this, component);
   loop.Run();
 }
 

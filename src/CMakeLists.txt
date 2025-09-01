@@ -20,6 +20,8 @@ add_executable(CPP_MUD_OUC core/main.cpp
         loader/loader.h
         display/screens/mainmenu.cpp
         display/screens/mainmenu.hpp
+        display/screens/gameplay.cpp
+        display/screens/gameplay.hpp
         display/screens/illustrateMenu.cpp
         display/screens/illustrateMenu.hpp
         display/screens/settings.cpp

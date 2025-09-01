@@ -79,8 +79,8 @@ ScreenMainMenu::ScreenMainMenu() {
         // 2.2 使用filler和border实现全屏边框和垂直居中效果
         return vbox({
                     title_element_,        // 使用预创建的标题元素
-                    text(""),             // 分隔符
-                    menu->Render() | hcenter | border,
+                    separator(),             // 分隔符
+                    hbox(menu->Render() | hcenter) | hcenter |border,
                }) | border; // 为整个屏幕添加边框
     });
 }
@@ -95,7 +95,7 @@ void ScreenMainMenu::HandleSelection(int selected_option) {
     switch (selected_option) {
         case 0:
             std::cout << "正在启动新游戏..." << std::endl;
-            // TODO: 实际启动新游戏的逻辑
+            navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Gameplay"));
             break;
         case 1:
             std::cout << "正在加载游戏..." << std::endl;

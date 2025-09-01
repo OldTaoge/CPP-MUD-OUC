@@ -51,11 +51,16 @@ public:
 
 private:
     void HandleNavigationRequest(const NavigationRequest& request);
+    ftxui::Component CreateMainContainer();
+    void CreateNewScreen(); // 创建新的屏幕实例
+    void SwitchToScreen(const std::string& screenName); // 切换到指定屏幕
 
-    ftxui::ScreenInteractive screen_;
+    ftxui::ScreenInteractive* screen_; // 使用原始指针
     std::map<std::string, BaseScreen*> screens_;
     std::string currentScreen_;
+    std::string nextScreen_; // 下一个要切换到的屏幕
     bool shouldQuit_ = false;
+    bool shouldSwitchScreen_ = false; // 是否需要切换屏幕
 };
 
 #endif //DISPLAY_H

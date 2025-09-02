@@ -42,6 +42,8 @@ private:
     ftxui::Component game_input_;
     ftxui::Component tool_button_;
     ftxui::Component tool_overlay_;  // 工具叠加图层
+    ftxui::Component close_button_;  // 关闭按钮
+    std::vector<ftxui::Component> tool_option_buttons_;  // 工具选项按钮
     
     // 数据存储
     std::vector<std::string> chat_messages_;

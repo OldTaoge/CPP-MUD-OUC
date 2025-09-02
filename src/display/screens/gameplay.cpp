@@ -46,8 +46,26 @@ GameplayScreen::GameplayScreen() {
         this->ShowToolOverlay();
     });
     
-    // 创建工具叠加图层（初始为空）
+    // 创建工具选项按钮
+    tool_option_buttons_.clear();
+    for (size_t i = 0; i < tool_options_.size(); ++i) {
+        auto button = Button(tool_options_[i], [this, i] {
+            this->HandleToolOption(i);
+        });
+        tool_option_buttons_.push_back(button);
+    }
+    
+    // 创建关闭按钮
+    close_button_ = Button("关闭", [this] {
+        this->HideToolOverlay();
+    });
+    
+    // 创建工具叠加图层
     tool_overlay_ = Container::Vertical({});
+    for (auto& button : tool_option_buttons_) {
+        tool_overlay_->Add(button);
+    }
+    tool_overlay_->Add(close_button_);
     
     // 创建主组件
     component_ = Container::Vertical({
@@ -182,23 +200,16 @@ GameplayScreen::GameplayScreen() {
         // 工具叠加图层
         if (show_tool_overlay_) {
             Elements overlay_options;
-            for (size_t i = 0; i < tool_options_.size(); ++i) {
-                auto option_button = Button(tool_options_[i], [this, i] {
-                    this->HandleToolOption(i);
-                });
-                overlay_options.push_back(option_button->Render());
+            for (auto& button : tool_option_buttons_) {
+                overlay_options.push_back(button->Render());
             }
-            
-            auto close_button = Button("关闭", [this] {
-                this->HideToolOverlay();
-            });
             
             auto overlay_element = vbox({
                 text("工具菜单") | bold | color(Color::Magenta) | hcenter,
                 separator(),
                 vbox(overlay_options) | border,
                 separator(),
-                close_button->Render() | hcenter
+                close_button_->Render() | hcenter
             }) | border | bgcolor(Color::DarkBlue) | color(Color::White);
             
             return overlay_element | hcenter | vcenter;

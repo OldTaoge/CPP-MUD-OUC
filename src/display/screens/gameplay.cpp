@@ -13,7 +13,7 @@
 
 using namespace ftxui;
 
-GameplayScreen::GameplayScreen() {
+GameplayScreen::GameplayScreen(Player* player) : player_(player) {
     // 初始化工具选项
     tool_options_ = {
         "背包 - 查看和管理物品",
@@ -23,10 +23,9 @@ GameplayScreen::GameplayScreen() {
         "返回 - 保存游戏或退出"
     };
     
-    // 初始化游戏状态
-    player_name_ = "旅行者";
-    player_hp_ = 100;
-    player_max_hp_ = 100;
+    // 使用传入的玩家对象初始化游戏状态
+    UpdatePlayerInfo(*player_);
+    player_max_hp_ = 100; // 假设最大生命值为100
     player_status_ = "正常";
     team_members_ = {"派蒙", "温迪", "钟离"};
     
@@ -227,6 +226,9 @@ void GameplayScreen::UpdatePlayerInfo(const Player& player) {
     player_name_ = player.name;
     player_hp_ = player.health;
     // 这里可以添加更多玩家信息的更新
+    
+    // 定期更新游戏状态，确保显示最新的玩家信息
+    UpdateGameStatus("你站在蒙德城的广场上，周围是熙熙攘攘的人群。");
 }
 
 void GameplayScreen::AddChatMessage(const std::string& message, bool isLLM) {
@@ -305,6 +307,9 @@ void GameplayScreen::HandleToolOption(int optionIndex) {
     switch (optionIndex) {
         case 0: // 背包
             AddChatMessage("派蒙: 打开背包查看物品", true);
+            if (navigation_callback_) {
+                navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Inventory"));
+            }
             break;
         case 1: // 地图
             AddChatMessage("派蒙: 显示世界地图", true);

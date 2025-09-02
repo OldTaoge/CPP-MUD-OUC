@@ -8,6 +8,8 @@ add_subdirectory(FTXUI-src)
 add_executable(CPP_MUD_OUC core/main.cpp
         player/player.cpp
         player/player.h
+        player/item.cpp
+        player/item.h
         core/game.cpp
         core/game.h
         display/display.cpp
@@ -28,6 +30,8 @@ add_executable(CPP_MUD_OUC core/main.cpp
         display/screens/illustrateMenu.hpp
         display/screens/settings.cpp
         display/screens/settings.hpp
+        display/screens/inventory.cpp
+        display/screens/inventory.hpp
         utils/utils.cpp
         utils/utils.hpp)
 

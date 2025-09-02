@@ -61,6 +61,9 @@ private:
     std::string nextScreen_; // 下一个要切换到的屏幕
     bool shouldQuit_ = false;
     bool shouldSwitchScreen_ = false; // 是否需要切换屏幕
+    
+    // 玩家对象指针
+    class Player* player_;
 };
 
 #endif //DISPLAY_H

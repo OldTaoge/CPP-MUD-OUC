@@ -16,7 +16,7 @@ class Player;
 
 class GameplayScreen : public BaseScreen {
 public:
-    GameplayScreen();
+    GameplayScreen(Player* player);
     ~GameplayScreen() = default;
 
     // 实现基类的虚函数
@@ -34,6 +34,9 @@ private:
     void ShowToolOverlay();
     void HideToolOverlay();
     void HandleToolOption(int optionIndex);
+    
+    // 玩家对象引用
+    Player* player_;
     
     ftxui::Component component_;
     

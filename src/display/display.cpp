@@ -10,6 +10,8 @@
 #include "screens/illustrateMenu.hpp"
 #include "screens/settings.hpp"
 #include "screens/gameplay.hpp"
+#include "screens/inventory.hpp"
+#include "../player/player.h"
 
 using namespace ftxui;
 
@@ -18,7 +20,8 @@ ScreenManager::ScreenManager()
       currentScreen_("MainMenu"),
       nextScreen_(""),
       shouldQuit_(false),
-      shouldSwitchScreen_(false)
+      shouldSwitchScreen_(false),
+      player_(new Player("旅行者", 0, 0, 100))
 {
     // 创建导航回调
     auto nav_callback = [this](const NavigationRequest& request) {
@@ -30,7 +33,7 @@ ScreenManager::ScreenManager()
     screens_["MainMenu"]->SetNavigationCallback(nav_callback);
     
     // 创建游戏主界面实例
-    screens_["Gameplay"] = new GameplayScreen();
+    screens_["Gameplay"] = new GameplayScreen(player_);
     screens_["Gameplay"]->SetNavigationCallback(nav_callback);
     
     // 创建游戏说明屏幕实例
@@ -40,6 +43,10 @@ ScreenManager::ScreenManager()
     // 创建设置屏幕实例
     screens_["Settings"] = new SettingsScreen();
     screens_["Settings"]->SetNavigationCallback(nav_callback);
+    
+    // 创建背包屏幕实例
+    screens_["Inventory"] = new InventoryScreen(player_);
+    screens_["Inventory"]->SetNavigationCallback(nav_callback);
     
     // 创建第一个屏幕实例
     CreateNewScreen();
@@ -57,6 +64,12 @@ ScreenManager::~ScreenManager() {
         delete pair.second;
     }
     screens_.clear();
+    
+    // 删除玩家对象
+    if (player_) {
+        delete player_;
+        player_ = nullptr;
+    }
 }
 
 void ScreenManager::HandleNavigationRequest(const NavigationRequest& request) {

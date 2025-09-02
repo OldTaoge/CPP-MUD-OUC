@@ -35,6 +35,7 @@ public:
 private:
     void HandleToolButton(int buttonIndex);
     void HandleGameCommand(const std::string& command);
+    void HandleCommandOption(int optionIndex);  // 处理命令选项
     void ShowToolOverlay();
     void HideToolOverlay();
     void HandleToolOption(int optionIndex);
@@ -75,10 +76,13 @@ private:
     
     // 输入缓冲区
     std::string chat_input_buffer_;
-    std::string game_input_buffer_;
+    
+    // 命令选项
+    std::vector<std::string> command_options_;  // 游戏命令选项列表
     
     // 选择状态
     int selected_tool_button_ = 0;
+    int selected_command_option_ = 0;  // 当前选中的命令选项
     bool show_tool_overlay_ = false;  // 是否显示工具叠加图层
     
     // 地图交互状态

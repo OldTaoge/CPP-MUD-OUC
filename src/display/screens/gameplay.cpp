@@ -24,6 +24,16 @@ GameplayScreen::GameplayScreen(Player* player) : player_(player), mapManager_(nu
         "返回 - 保存游戏或退出"
     };
     
+    // 初始化命令选项
+    command_options_ = {
+        "移动 - 探索周围环境",
+        "攻击 - 进入战斗状态",
+        "查看 - 仔细观察环境",
+        "交谈 - 与NPC对话",
+        "收集 - 拾取物品",
+        "帮助 - 查看可用命令"
+    };
+    
     // 使用传入的玩家对象初始化游戏状态
     UpdatePlayerInfo(*player_);
     player_max_hp_ = 100; // 假设最大生命值为100
@@ -40,9 +50,6 @@ GameplayScreen::GameplayScreen(Player* player) : player_(player), mapManager_(nu
     
     // 创建聊天输入组件
     chat_input_ = Input(&chat_input_buffer_, "与派蒙对话...");
-    
-    // 创建游戏命令输入组件
-    game_input_ = Input(&game_input_buffer_, "输入游戏命令...");
     
     // 创建单一工具按钮
     tool_button_ = Button("工具", [this] {
@@ -73,7 +80,6 @@ GameplayScreen::GameplayScreen(Player* player) : player_(player), mapManager_(nu
     // 创建主组件
     component_ = Container::Vertical({
         chat_input_,
-        game_input_,
         tool_button_,
         tool_overlay_
     });
@@ -106,6 +112,37 @@ GameplayScreen::GameplayScreen(Player* player) : player_(player), mapManager_(nu
                 HideMapOverlay();
                 return true;
             }
+        } else if (!show_tool_overlay_) {
+            // 环境交互模式 - 使用e键进入
+            if (event.is_character() && (event.character() == "e" || event.character() == "E")) {
+                if (!current_map_entities_.empty()) {
+                    AddChatMessage("派蒙: 按方向键选择对象，按Enter键交互，按ESC退出交互模式。", true);
+                    // 模拟选中第一个可交互对象
+                    selected_map_entity_ = 0;
+                    // 立即执行交互
+                    HandleMapEntitySelection(selected_map_entity_);
+                } else {
+                    AddChatMessage("派蒙: 当前区域没有可交互的对象。", true);
+                }
+                return true;
+            }
+            
+            // 命令选项选择逻辑
+            if (event == Event::ArrowUp) {
+                if (selected_command_option_ > 0) {
+                    selected_command_option_--;
+                }
+                return true;
+            } else if (event == Event::ArrowDown) {
+                if (selected_command_option_ < command_options_.size() - 1) {
+                    selected_command_option_++;
+                }
+                return true;
+            } else if (event == Event::Return) {
+                // 执行选中的命令
+                HandleCommandOption(selected_command_option_);
+                return true;
+            }
         }
         return false;
     });
@@ -114,7 +151,6 @@ GameplayScreen::GameplayScreen(Player* player) : player_(player), mapManager_(nu
     component_ = Renderer(component_, [this] {
         // 检查输入缓冲区变化并处理
         static std::string last_chat_input = "";
-        static std::string last_game_input = "";
         
         if (chat_input_buffer_ != last_chat_input && !chat_input_buffer_.empty() && 
             chat_input_buffer_.find('\n') != std::string::npos) {
@@ -128,19 +164,7 @@ GameplayScreen::GameplayScreen(Player* player) : player_(player), mapManager_(nu
             chat_input_buffer_.clear();
         }
         
-        if (game_input_buffer_ != last_game_input && !game_input_buffer_.empty() && 
-            game_input_buffer_.find('\n') != std::string::npos) {
-            // 游戏命令输入完成
-            std::string input = game_input_buffer_;
-            input.erase(std::remove(input.begin(), input.end(), '\n'), input.end());
-            if (!input.empty()) {
-                HandleGameCommand(input);
-            }
-            game_input_buffer_.clear();
-        }
-        
         last_chat_input = chat_input_buffer_;
-        last_game_input = game_input_buffer_;
         
         // 构建聊天消息元素
         Elements chat_elements;
@@ -198,9 +222,56 @@ GameplayScreen::GameplayScreen(Player* player) : player_(player), mapManager_(nu
             separator(),
             vbox({
                 vbox(game_elements) | flex | border,
-                hbox({
-                    text("命令: ") | color(Color::Red),
-                    game_input_->Render() | flex
+                
+                // 当前区域可交互对象
+                vbox({
+                    text("周围环境:") | color(Color::Green),
+                    separator(),
+                    vbox(
+                        [this]() {
+                            Elements interactables;
+                            if (current_map_entities_.empty()) {
+                                interactables.push_back(text("当前区域没有可交互的对象。"));
+                            } else {
+                                for (const auto& entity : current_map_entities_) {
+                                    // 根据实体类型设置不同颜色
+                                    if (entity.find("NPC:") != std::string::npos) {
+                                        interactables.push_back(text("  " + entity) | color(Color::Cyan));
+                                    } else if (entity.find("敌人:") != std::string::npos) {
+                                        interactables.push_back(text("  " + entity) | color(Color::Red));
+                                    } else if (entity.find("物品:") != std::string::npos) {
+                                        interactables.push_back(text("  " + entity) | color(Color::Yellow));
+                                    } else {
+                                        interactables.push_back(text("  " + entity));
+                                    }
+                                }
+                            }
+                            return interactables;
+                        }()
+                    ) | border
+                }),
+                
+                // 游戏命令选项
+                vbox({
+                    text("请选择命令 (↑↓箭头选择, Enter确认):") | color(Color::Red),
+                    separator(),
+                    vbox(
+                        [this]() {
+                            Elements options;
+                            for (size_t i = 0; i < command_options_.size(); ++i) {
+                                if (i == selected_command_option_) {
+                                    options.push_back(
+                                        text("> " + command_options_[i])
+                                        | color(Color::Yellow)
+                                        | bgcolor(Color::Blue)
+                                    );
+                                } else {
+                                    options.push_back(text("  " + command_options_[i]));
+                                }
+                            }
+                            return options;
+                        }()
+                    ) | border
                 })
             }) | flex
         }) | size(HEIGHT, EQUAL, 20);  // 固定高度为20行
@@ -350,21 +421,57 @@ void GameplayScreen::HandleToolButton(int buttonIndex) {
     }
 }
 
+// 命令选项处理函数
+void GameplayScreen::HandleCommandOption(int optionIndex) {
+    if (optionIndex < 0 || optionIndex >= command_options_.size()) {
+        return;
+    }
+    
+    switch (optionIndex) {
+        case 0: // 移动
+            UpdateGameStatus("你开始移动...");
+            AddChatMessage("派蒙: 好的，我们走吧！", true);
+            break;
+        case 1: // 攻击
+            UpdateGameStatus("你进入战斗状态！");
+            AddChatMessage("派蒙: 小心！敌人出现了！", true);
+            break;
+        case 2: // 查看
+            UpdateGameStatus("你仔细观察周围的环境...");
+            AddChatMessage("派蒙: 这里有很多有趣的东西呢！", true);
+            break;
+        case 3: // 交谈
+            UpdateGameStatus("你想与谁交谈？");
+            AddChatMessage("派蒙: 先找到NPC，然后尝试与他们对话吧！", true);
+            break;
+        case 4: // 收集
+            UpdateGameStatus("你开始收集物品...");
+            AddChatMessage("派蒙: 周围有没有什么可以收集的东西呢？", true);
+            break;
+        case 5: // 帮助
+            AddChatMessage("派蒙: 使用↑↓箭头键选择命令，按Enter键执行。", true);
+            AddChatMessage("可用命令包括：移动、攻击、查看、交谈、收集和帮助。", true);
+            break;
+    }
+}
+
+// 保留原有的命令处理函数以兼容可能的其他调用
 void GameplayScreen::HandleGameCommand(const std::string& command) {
     std::string lowerCommand = command;
     std::transform(lowerCommand.begin(), lowerCommand.end(), lowerCommand.begin(), ::tolower);
     
     if (lowerCommand.find("移动") != std::string::npos || lowerCommand.find("走") != std::string::npos) {
-        UpdateGameStatus("你开始移动...");
-        AddChatMessage("派蒙: 好的，我们走吧！", true);
+        HandleCommandOption(0);  // 调用移动命令
     } else if (lowerCommand.find("攻击") != std::string::npos || lowerCommand.find("战斗") != std::string::npos) {
-        UpdateGameStatus("你进入战斗状态！");
-        AddChatMessage("派蒙: 小心！敌人出现了！", true);
+        HandleCommandOption(1);  // 调用攻击命令
     } else if (lowerCommand.find("查看") != std::string::npos || lowerCommand.find("观察") != std::string::npos) {
-        UpdateGameStatus("你仔细观察周围的环境...");
-        AddChatMessage("派蒙: 这里有很多有趣的东西呢！", true);
+        HandleCommandOption(2);  // 调用查看命令
+    } else if (lowerCommand.find("交谈") != std::string::npos || lowerCommand.find("对话") != std::string::npos) {
+        HandleCommandOption(3);  // 调用交谈命令
+    } else if (lowerCommand.find("收集") != std::string::npos || lowerCommand.find("拾取") != std::string::npos) {
+        HandleCommandOption(4);  // 调用收集命令
     } else if (lowerCommand.find("帮助") != std::string::npos) {
-        AddChatMessage("派蒙: 你可以尝试输入：移动、攻击、查看、帮助等命令", true);
+        HandleCommandOption(5);  // 调用帮助命令
     } else {
         UpdateGameStatus("你尝试了 '" + command + "'");
         AddChatMessage("派蒙: 我不太明白你的意思，试试其他命令吧！", true);
@@ -490,6 +597,9 @@ void GameplayScreen::HandleMapEntitySelection(int entityIndex) {
 }
 
 void GameplayScreen::UpdateMapEntities() {
+    // 保存更新前的实体数量
+    size_t old_entity_count = current_map_entities_.size();
+    
     current_map_entities_.clear();
     
     if (!mapManager_) {
@@ -499,6 +609,14 @@ void GameplayScreen::UpdateMapEntities() {
     MapArea* currentArea = mapManager_->getArea(mapManager_->getCurrentArea());
     if (currentArea) {
         current_map_entities_ = currentArea->getInteractableList();
+    }
+    
+    // 当实体列表更新时，重置选中项
+    selected_map_entity_ = 0;
+    
+    // 如果进入了新区域并且有可交互对象，显示提示
+    if (old_entity_count == 0 && !current_map_entities_.empty()) {
+        AddChatMessage("派蒙: 这个区域有可交互的对象，按'e'键可以与它们互动。", true);
     }
 }
 

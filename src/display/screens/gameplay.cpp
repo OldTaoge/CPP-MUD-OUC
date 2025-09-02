@@ -4,6 +4,7 @@
 
 #include "gameplay.hpp"
 #include "../player/player.h"
+#include "../core/map.h"
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/component/screen_interactive.hpp>
@@ -13,7 +14,7 @@
 
 using namespace ftxui;
 
-GameplayScreen::GameplayScreen(Player* player) : player_(player) {
+GameplayScreen::GameplayScreen(Player* player) : player_(player), mapManager_(nullptr) {
     // 初始化工具选项
     tool_options_ = {
         "背包 - 查看和管理物品",
@@ -33,6 +34,9 @@ GameplayScreen::GameplayScreen(Player* player) : player_(player) {
     AddChatMessage("欢迎来到《原神》世界！我是派蒙，你的向导。", true);
     AddChatMessage("有什么需要帮助的吗？输入帮助查看命令。");
     UpdateGameStatus("你站在蒙德城的广场上，周围是熙熙攘攘的人群。");
+    
+    // 初始化地图实体列表
+    UpdateMapEntities();
     
     // 创建聊天输入组件
     chat_input_ = Input(&chat_input_buffer_, "与派蒙对话...");
@@ -72,6 +76,38 @@ GameplayScreen::GameplayScreen(Player* player) : player_(player) {
         game_input_,
         tool_button_,
         tool_overlay_
+    });
+    
+    // 添加键盘事件处理
+    component_ = CatchEvent(component_, [this](Event event) {
+        if (show_map_overlay_) {
+            if (event.is_character()) {
+                if (event.character() == "q" || event.character() == "Q") {
+                    HideMapOverlay();
+                    return true;
+                }
+            } else if (event.is_mouse()) {
+                // 处理鼠标事件
+                return false;
+            } else if (event == Event::ArrowUp) {
+                if (selected_map_entity_ > 0) {
+                    selected_map_entity_--;
+                }
+                return true;
+            } else if (event == Event::ArrowDown) {
+                if (selected_map_entity_ < current_map_entities_.size() - 1) {
+                    selected_map_entity_++;
+                }
+                return true;
+            } else if (event == Event::Return) {
+                HandleMapEntitySelection(selected_map_entity_);
+                return true;
+            } else if (event == Event::Escape) {
+                HideMapOverlay();
+                return true;
+            }
+        }
+        return false;
     });
     
     // 设置渲染器
@@ -196,8 +232,49 @@ GameplayScreen::GameplayScreen(Player* player) : player_(player) {
             status_area
         }) | border;
         
+        // 地图叠加图层
+        if (show_map_overlay_) {
+            Elements map_elements;
+            
+            // 显示当前区域信息
+            if (mapManager_) {
+                MapArea* currentArea = mapManager_->getArea(mapManager_->getCurrentArea());
+                if (currentArea) {
+                    map_elements.push_back(text("当前区域: " + currentArea->name) | color(Color::Cyan) | bold);
+                    map_elements.push_back(text(currentArea->description) | color(Color::White));
+                    map_elements.push_back(separator());
+                }
+            }
+            
+            // 显示可交互实体列表
+            map_elements.push_back(text("可交互内容:") | color(Color::Green) | bold);
+            for (size_t i = 0; i < current_map_entities_.size(); ++i) {
+                if (i == selected_map_entity_) {
+                    map_elements.push_back(text("> " + current_map_entities_[i]) | color(Color::Yellow) | bgcolor(Color::Blue));
+                } else {
+                    map_elements.push_back(text("  " + current_map_entities_[i]));
+                }
+            }
+            
+            // 添加操作说明
+            map_elements.push_back(separator());
+            map_elements.push_back(text("操作说明:") | color(Color::Blue) | bold);
+            map_elements.push_back(text("方向键 - 选择交互对象"));
+            map_elements.push_back(text("Enter - 确认交互"));
+            map_elements.push_back(text("ESC - 返回"));
+            
+            auto map_overlay_element = vbox({
+                text("地图交互") | bold | color(Color::Green) | hcenter,
+                separator(),
+                vbox(map_elements) | border,
+                separator(),
+                text("按ESC返回游戏") | color(Color::Yellow) | hcenter
+            }) | border | bgcolor(Color::DarkGreen) | color(Color::White);
+            
+            return map_overlay_element | hcenter | vcenter;
+        }
         // 工具叠加图层
-        if (show_tool_overlay_) {
+        else if (show_tool_overlay_) {
             Elements overlay_options;
             for (auto& button : tool_option_buttons_) {
                 overlay_options.push_back(button->Render());
@@ -255,6 +332,7 @@ void GameplayScreen::HandleToolButton(int buttonIndex) {
             break;
         case 1: // 地图
             AddChatMessage("派蒙: 显示世界地图", true);
+            ShowMapOverlay();
             break;
         case 2: // 任务
             AddChatMessage("派蒙: 查看当前任务", true);
@@ -313,6 +391,7 @@ void GameplayScreen::HandleToolOption(int optionIndex) {
             break;
         case 1: // 地图
             AddChatMessage("派蒙: 显示世界地图", true);
+            ShowMapOverlay();
             break;
         case 2: // 任务
             AddChatMessage("派蒙: 查看当前任务", true);
@@ -331,4 +410,99 @@ void GameplayScreen::HandleToolOption(int optionIndex) {
             }
             break;
     }
+}
+
+// 地图相关方法实现
+void GameplayScreen::ShowMapOverlay() {
+    show_map_overlay_ = true;
+    show_tool_overlay_ = false;
+    UpdateMapEntities();
+}
+
+void GameplayScreen::HideMapOverlay() {
+    show_map_overlay_ = false;
+    selected_map_entity_ = 0;
+}
+
+void GameplayScreen::HandleMapEntitySelection(int entityIndex) {
+    if (entityIndex < 0 || entityIndex >= current_map_entities_.size()) {
+        return;
+    }
+    
+    if (!mapManager_) {
+        AddChatMessage("派蒙: 地图系统未加载", true);
+        return;
+    }
+    
+    MapArea* currentArea = mapManager_->getArea(mapManager_->getCurrentArea());
+    if (!currentArea) {
+        AddChatMessage("派蒙: 当前区域无效", true);
+        return;
+    }
+    
+    std::string entityName = current_map_entities_[entityIndex];
+    
+    if (entityName.find("NPC:") != std::string::npos) {
+        // 处理NPC交互
+        std::string npcName = entityName.substr(4); // 移除"NPC: "前缀
+        auto npcs = currentArea->getNPCs();
+        for (auto npc : npcs) {
+            if (npc->name == npcName) {
+                AddChatMessage("派蒙: 与 " + npcName + " 对话", true);
+                AddChatMessage(npcName + ": " + npc->getRandomDialogue());
+                break;
+            }
+        }
+    } else if (entityName.find("敌人:") != std::string::npos) {
+        // 处理敌人交互
+        std::string enemyName = entityName.substr(3); // 移除"敌人: "前缀
+        auto enemies = currentArea->getEnemies();
+        for (auto enemy : enemies) {
+            if (enemy->name == enemyName) {
+                AddChatMessage("派蒙: 小心！发现了 " + enemyName, true);
+                AddChatMessage("敌人信息: 生命值 " + std::to_string(enemy->health) + 
+                             ", 攻击力 " + std::to_string(enemy->attack) + 
+                             ", 防御力 " + std::to_string(enemy->defense));
+                break;
+            }
+        }
+    } else if (entityName.find("物品:") != std::string::npos) {
+        // 处理物品交互
+        std::string itemName = entityName.substr(3); // 移除"物品: "前缀
+        auto collectibles = currentArea->getCollectibles();
+        for (auto collectible : collectibles) {
+            if (collectible->name == itemName) {
+                if (collectible->canCollect()) {
+                    Item collectedItem = collectible->collect();
+                    AddChatMessage("派蒙: 你拾取了 " + collectedItem.name + "!", true);
+                    AddChatMessage("物品描述: " + collectedItem.description);
+                    mapManager_->removeCollectibleFromCurrentArea(collectible);
+                    UpdateMapEntities(); // 更新地图实体列表
+                } else {
+                    AddChatMessage("派蒙: " + itemName + " 已经被拾取了", true);
+                }
+                break;
+            }
+        }
+    }
+    
+    HideMapOverlay();
+}
+
+void GameplayScreen::UpdateMapEntities() {
+    current_map_entities_.clear();
+    
+    if (!mapManager_) {
+        return;
+    }
+    
+    MapArea* currentArea = mapManager_->getArea(mapManager_->getCurrentArea());
+    if (currentArea) {
+        current_map_entities_ = currentArea->getInteractableList();
+    }
+}
+
+void GameplayScreen::SetMapManager(MapManager* mapManager) {
+    mapManager_ = mapManager;
+    UpdateMapEntities();
 }

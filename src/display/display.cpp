@@ -12,7 +12,9 @@
 #include "screens/gameplay.hpp"
 #include "screens/inventory.hpp"
 #include "screens/questscreen.hpp"
+#include "screens/mapScreen.hpp"
 #include "../player/player.h"
+#include "../core/map.h"
 
 using namespace ftxui;
 
@@ -22,7 +24,8 @@ ScreenManager::ScreenManager()
       nextScreen_(""),
       shouldQuit_(false),
       shouldSwitchScreen_(false),
-      player_(new Player("旅行者", 0, 0, 100))
+      player_(new Player("旅行者", 0, 0, 100)),
+      mapManager_(new MapManager())
 {
     // 创建导航回调
     auto nav_callback = [this](const NavigationRequest& request) {
@@ -36,6 +39,8 @@ ScreenManager::ScreenManager()
     // 创建游戏主界面实例
     screens_["Gameplay"] = new GameplayScreen(player_);
     screens_["Gameplay"]->SetNavigationCallback(nav_callback);
+    // 设置地图管理器
+    static_cast<GameplayScreen*>(screens_["Gameplay"])->SetMapManager(mapManager_);
     
     // 创建游戏说明屏幕实例
     screens_["Illustrate"] = new IllustrateMenu();
@@ -52,6 +57,10 @@ ScreenManager::ScreenManager()
     // 创建任务屏幕实例
     screens_["Quest"] = new QuestScreen(player_);
     screens_["Quest"]->SetNavigationCallback(nav_callback);
+    
+    // 创建地图屏幕实例
+    screens_["Map"] = new MapScreen(mapManager_);
+    screens_["Map"]->SetNavigationCallback(nav_callback);
     
     // 创建第一个屏幕实例
     CreateNewScreen();
@@ -74,6 +83,12 @@ ScreenManager::~ScreenManager() {
     if (player_) {
         delete player_;
         player_ = nullptr;
+    }
+    
+    // 删除地图管理器
+    if (mapManager_) {
+        delete mapManager_;
+        mapManager_ = nullptr;
     }
 }
 

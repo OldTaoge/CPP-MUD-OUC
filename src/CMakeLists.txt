@@ -36,6 +36,10 @@ add_executable(CPP_MUD_OUC core/main.cpp
         display/screens/inventory.hpp
         display/screens/questscreen.cpp
         display/screens/questscreen.hpp
+        display/screens/mapScreen.cpp
+        display/screens/mapScreen.hpp
+        core/map.cpp
+        core/map.h
         utils/utils.cpp
         utils/utils.hpp)
 

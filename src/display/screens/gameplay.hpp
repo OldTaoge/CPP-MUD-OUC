@@ -13,6 +13,7 @@
 
 // 前向声明
 class Player;
+class MapManager;
 
 class GameplayScreen : public BaseScreen {
 public:
@@ -27,6 +28,9 @@ public:
     void AddChatMessage(const std::string& message, bool isLLM = false);
     void UpdateGameStatus(const std::string& status);
     void UpdateTeamStatus(const std::vector<std::string>& teamMembers);
+    
+    // 设置地图管理器
+    void SetMapManager(MapManager* mapManager);
 
 private:
     void HandleToolButton(int buttonIndex);
@@ -35,8 +39,17 @@ private:
     void HideToolOverlay();
     void HandleToolOption(int optionIndex);
     
+    // 地图相关方法
+    void ShowMapOverlay();
+    void HideMapOverlay();
+    void HandleMapEntitySelection(int entityIndex);
+    void UpdateMapEntities();
+    
     // 玩家对象引用
     Player* player_;
+    
+    // 地图管理器引用
+    MapManager* mapManager_;
     
     ftxui::Component component_;
     
@@ -67,6 +80,11 @@ private:
     // 选择状态
     int selected_tool_button_ = 0;
     bool show_tool_overlay_ = false;  // 是否显示工具叠加图层
+    
+    // 地图交互状态
+    bool show_map_overlay_ = false;   // 是否显示地图叠加图层
+    int selected_map_entity_ = 0;     // 选中的地图实体索引
+    std::vector<std::string> current_map_entities_; // 当前区域的可交互实体列表
 };
 
 #endif //CPP_MUD_OUC_GAMEPLAY_HPP

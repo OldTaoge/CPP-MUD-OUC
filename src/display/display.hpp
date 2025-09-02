@@ -64,6 +64,9 @@ private:
     
     // 玩家对象指针
     class Player* player_;
+    
+    // 地图管理器指针
+    class MapManager* mapManager_;
 };
 
 #endif //DISPLAY_H

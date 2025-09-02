@@ -11,6 +11,7 @@
 #include "screens/settings.hpp"
 #include "screens/gameplay.hpp"
 #include "screens/inventory.hpp"
+#include "screens/questscreen.hpp"
 #include "../player/player.h"
 
 using namespace ftxui;
@@ -47,6 +48,10 @@ ScreenManager::ScreenManager()
     // 创建背包屏幕实例
     screens_["Inventory"] = new InventoryScreen(player_);
     screens_["Inventory"]->SetNavigationCallback(nav_callback);
+    
+    // 创建任务屏幕实例
+    screens_["Quest"] = new QuestScreen(player_);
+    screens_["Quest"]->SetNavigationCallback(nav_callback);
     
     // 创建第一个屏幕实例
     CreateNewScreen();

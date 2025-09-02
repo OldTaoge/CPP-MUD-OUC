@@ -10,6 +10,8 @@ add_executable(CPP_MUD_OUC core/main.cpp
         player/player.h
         player/item.cpp
         player/item.h
+        player/quest.cpp
+        player/quest.h
         core/game.cpp
         core/game.h
         display/display.cpp
@@ -32,6 +34,8 @@ add_executable(CPP_MUD_OUC core/main.cpp
         display/screens/settings.hpp
         display/screens/inventory.cpp
         display/screens/inventory.hpp
+        display/screens/questscreen.cpp
+        display/screens/questscreen.hpp
         utils/utils.cpp
         utils/utils.hpp)
 

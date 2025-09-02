@@ -19,6 +19,34 @@ Player::Player(std::string name, int startX, int startY, int startHealth)
     Item goldCoin("金币", "可以用来购买物品", ItemType::MATERIAL,
                  1, 10, true, 0, 0, 0, 0);
     addItem(goldCoin);
+    
+    // 添加一些初始任务
+    // 任务1：蒙德城的委托
+    Quest mondstadtQuest("mondstadt_1", "蒙德城的委托", "帮助蒙德城的居民解决问题。");
+    mondstadtQuest.addObjective(QuestObjective("与城市守卫对话"));
+    mondstadtQuest.addObjective(QuestObjective("收集5个苹果"));
+    mondstadtQuest.reward = "铁剑、生命药水";
+    mondstadtQuest.exp_reward = 50;
+    mondstadtQuest.gold_reward = 100;
+    addQuest(mondstadtQuest);
+    
+    // 任务2：冒险的开始
+    Quest adventureQuest("adventure_1", "冒险的开始", "探索周围的区域，了解提瓦特大陆。");
+    adventureQuest.addObjective(QuestObjective("离开蒙德城"));
+    adventureQuest.addObjective(QuestObjective("探索低语森林"));
+    adventureQuest.reward = "冒险笔记、地图";
+    adventureQuest.exp_reward = 30;
+    adventureQuest.gold_reward = 50;
+    addQuest(adventureQuest);
+    
+    // 任务3：元素能量
+    Quest elementQuest("element_1", "元素能量", "了解提瓦特大陆的元素之力。");
+    elementQuest.addObjective(QuestObjective("与丽莎对话"));
+    elementQuest.addObjective(QuestObjective("收集3个元素碎片"));
+    elementQuest.reward = "元素指南、魔法书";
+    elementQuest.exp_reward = 40;
+    elementQuest.gold_reward = 80;
+    addQuest(elementQuest);
 }
 
 // 添加物品到物品栏
@@ -70,4 +98,84 @@ bool Player::useItem(int index) {
         return true;
     }
     return false;
+}
+
+// 添加任务
+void Player::addQuest(const Quest& quest) {
+    quests_.push_back(quest);
+}
+
+// 获取所有任务
+const std::vector<Quest>& Player::getQuests() const {
+    return quests_;
+}
+
+// 查找任务
+Quest* Player::findQuest(const std::string& questId) {
+    for (auto& quest : quests_) {
+        if (quest.id == questId) {
+            return &quest;
+        }
+    }
+    return nullptr;
+}
+
+// 开始任务
+bool Player::startQuest(const std::string& questId) {
+    Quest* quest = findQuest(questId);
+    if (!quest) {
+        return false;
+    }
+    
+    quest->start();
+    return true;
+}
+
+// 完成任务
+bool Player::completeQuest(const std::string& questId) {
+    Quest* quest = findQuest(questId);
+    if (!quest) {
+        return false;
+    }
+    
+    return quest->complete();
+}
+
+// 更新任务目标进度
+bool Player::updateQuestObjective(const std::string& questId, int objectiveIndex, int amount) {
+    Quest* quest = findQuest(questId);
+    if (!quest) {
+        return false;
+    }
+    
+    return quest->updateObjective(objectiveIndex, amount);
+}
+
+// 获取任务奖励
+bool Player::claimQuestReward(const std::string& questId) {
+    Quest* quest = findQuest(questId);
+    if (!quest || quest->status != QuestStatus::COMPLETED) {
+        return false;
+    }
+    
+    // 发放金币奖励
+    if (quest->gold_reward > 0) {
+        // 查找金币物品
+        Item* goldItem = findItem("金币");
+        if (goldItem && goldItem->isStackable) {
+            // 如果已有金币，增加堆叠数量
+            goldItem->addStack(quest->gold_reward);
+        } else {
+            // 否则，添加新的金币物品
+            Item newGold("金币", "可以用来购买物品", ItemType::MATERIAL,
+                        1, quest->gold_reward, true, 0, 0, 0, 0);
+            addItem(newGold);
+        }
+    }
+    
+    // 这里可以添加其他奖励的发放逻辑，如物品、经验等
+    // 注意：经验值系统目前未实现，可以根据实际需求添加
+    
+    // 任务奖励已领取
+    return true;
 }

@@ -316,6 +316,9 @@ void GameplayScreen::HandleToolOption(int optionIndex) {
             break;
         case 2: // 任务
             AddChatMessage("派蒙: 查看当前任务", true);
+            if (navigation_callback_) {
+                navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Quest"));
+            }
             break;
         case 3: // 设置
             if (navigation_callback_) {

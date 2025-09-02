@@ -14,6 +14,8 @@ add_executable(CPP_MUD_OUC core/main.cpp
         player/quest.h
         core/game.cpp
         core/game.h
+        core/gamestate.cpp
+        core/gamestate.h
         display/display.cpp
         display/display.hpp
         display/window_size_checker.cpp

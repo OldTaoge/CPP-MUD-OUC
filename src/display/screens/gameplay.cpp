@@ -34,11 +34,26 @@ GameplayScreen::GameplayScreen(Player* player) : player_(player), mapManager_(nu
         "帮助 - 查看可用命令"
     };
     
-    // 使用传入的玩家对象初始化游戏状态
+    // 使用GameState初始化游戏状态
+    GameState& gameState = GameState::getInstance();
+    if (player_) {
+        gameState.setPlayer(std::shared_ptr<Player>(player_, [](Player*){})); // 使用空删除器
+    }
+    
+    // 初始化队伍成员
+    TeamMember paimon("派蒙", 1, 50, 50, 5, 3, "风", "无");
+    TeamMember venti("温迪", 90, 15000, 15000, 2500, 800, "风", "天空之翼");
+    TeamMember zhongli("钟离", 90, 18000, 18000, 1800, 1200, "岩", "护摩之杖");
+    
+    gameState.addTeamMember(paimon);
+    gameState.addTeamMember(venti);
+    gameState.addTeamMember(zhongli);
+    
+    // 设置初始位置
+    gameState.moveTo("蒙德城", "广场", 0, 0, "蒙德城的中心广场，周围是熙熙攘攘的人群");
+    
+    // 更新UI显示
     UpdatePlayerInfo(*player_);
-    player_max_hp_ = 100; // 假设最大生命值为100
-    player_status_ = "正常";
-    team_members_ = {"派蒙", "温迪", "钟离"};
     
     // 添加一些初始消息
     AddChatMessage("欢迎来到《原神》世界！我是派蒙，你的向导。", true);
@@ -199,7 +214,7 @@ GameplayScreen::GameplayScreen(Player* player) : player_(player), mapManager_(nu
                     chat_input_->Render() | flex
                 })
             }) | flex
-        }) | size(HEIGHT, EQUAL, 15);  // 固定高度为15行
+        }) | size(HEIGHT, EQUAL, 10);  // 减小为10行高度
         /*
         auto tool_area = vbox({
             text("工具") | bold | color(Color::Blue),
@@ -274,7 +289,7 @@ GameplayScreen::GameplayScreen(Player* player) : player_(player), mapManager_(nu
                     ) | border
                 })
             }) | flex
-        }) | size(HEIGHT, EQUAL, 20);  // 固定高度为20行
+        }) | size(HEIGHT, EQUAL, 25);  // 增加为25行高度
         
         // 底部：人物HP + 人物状态 + 队伍状态
         auto status_area = hbox({
@@ -371,12 +386,26 @@ Component GameplayScreen::GetComponent() {
 }
 
 void GameplayScreen::UpdatePlayerInfo(const Player& player) {
+    GameState& gameState = GameState::getInstance();
+    
     player_name_ = player.name;
     player_hp_ = player.health;
-    // 这里可以添加更多玩家信息的更新
+    player_max_hp_ = 100; // 假设最大生命值为100
+    player_status_ = "正常";
+    
+    // 从GameState获取队伍信息
+    const auto& team = gameState.getTeam();
+    team_members_.clear();
+    for (const auto& member : team) {
+        team_members_.push_back(member.getStatusString());
+    }
+    
+    // 获取当前位置信息
+    Position pos = gameState.getPosition();
+    std::string locationInfo = "你在 " + pos.getFullPosition() + ". " + pos.description;
     
     // 定期更新游戏状态，确保显示最新的玩家信息
-    UpdateGameStatus("你站在蒙德城的广场上，周围是熙熙攘攘的人群。");
+    UpdateGameStatus(locationInfo);
 }
 
 void GameplayScreen::AddChatMessage(const std::string& message, bool isLLM) {
@@ -393,6 +422,7 @@ void GameplayScreen::UpdateGameStatus(const std::string& status) {
 }
 
 void GameplayScreen::UpdateTeamStatus(const std::vector<std::string>& teamMembers) {
+    // 这个方法现在由GameState管理，直接使用传入的队伍信息
     team_members_ = teamMembers;
 }
 
@@ -428,30 +458,102 @@ void GameplayScreen::HandleCommandOption(int optionIndex) {
     }
     
     switch (optionIndex) {
-        case 0: // 移动
+        case 0: { // 移动
             UpdateGameStatus("你开始移动...");
             AddChatMessage("派蒙: 好的，我们走吧！", true);
+            
+            // 使用GameState更新位置
+            GameState& gameState = GameState::getInstance();
+            
+            // 模拟移动到不同区域
+            static int moveCount = 0;
+            moveCount++;
+            
+            if (moveCount % 3 == 0) {
+                gameState.moveTo("低语森林", "林间小径", 45, 32, "宁静的森林小径，鸟儿在歌唱");
+                AddChatMessage("派蒙: 我们来到了低语森林！这里真美！", true);
+            } else if (moveCount % 3 == 1) {
+                gameState.moveTo("蒙德城", "天使的馈赠", 120, 85, "蒙德城著名的酒馆，飘着酒香");
+                AddChatMessage("派蒙: 哇！是天使的馈赠酒馆！", true);
+            } else {
+                gameState.moveTo("风起地", "大树下", 78, 56, "风神巴巴托斯曾经休息的地方");
+                AddChatMessage("派蒙: 这里是风起地，好大的树啊！", true);
+            }
+            
+            // 更新UI显示
+            UpdatePlayerInfo(*player_);
             break;
-        case 1: // 攻击
+        }
+        case 1: { // 攻击
             UpdateGameStatus("你进入战斗状态！");
-            AddChatMessage("派蒙: 小心！敌人出现了！", true);
+            // 检查是否有敌人可以攻击
+            bool hasEnemy = false;
+            for (const auto& entity : current_map_entities_) {
+                if (entity.find("敌人:") != std::string::npos) {
+                    hasEnemy = true;
+                    std::string enemyName = entity.substr(3); // 移除"敌人: "前缀
+                    AddChatMessage("派蒙: 小心！发现了 " + enemyName, true);
+                    AddChatMessage("你准备攻击 " + enemyName + "！", true);
+                    break;
+                }
+            }
+            if (!hasEnemy) {
+                AddChatMessage("派蒙: 当前区域没有敌人可以攻击。", true);
+            }
             break;
-        case 2: // 查看
+        }
+        case 2: { // 查看
             UpdateGameStatus("你仔细观察周围的环境...");
-            AddChatMessage("派蒙: 这里有很多有趣的东西呢！", true);
+            if (!current_map_entities_.empty()) {
+                AddChatMessage("派蒙: 你看到了以下可交互的对象：", true);
+                for (const auto& entity : current_map_entities_) {
+                    AddChatMessage("  " + entity);
+                }
+            } else {
+                AddChatMessage("派蒙: 当前区域没有可交互的对象。", true);
+            }
             break;
-        case 3: // 交谈
+        }
+        case 3: { // 交谈
             UpdateGameStatus("你想与谁交谈？");
-            AddChatMessage("派蒙: 先找到NPC，然后尝试与他们对话吧！", true);
+            // 查找并与第一个NPC对话
+            bool hasNPC = false;
+            for (int i = 0; i < current_map_entities_.size(); ++i) {
+                const auto& entity = current_map_entities_[i];
+                if (entity.find("NPC:") != std::string::npos) {
+                    hasNPC = true;
+                    HandleMapEntitySelection(i); // 直接与找到的NPC交互
+                    break;
+                }
+            }
+            if (!hasNPC) {
+                AddChatMessage("派蒙: 当前区域没有可以交谈的NPC。", true);
+            }
             break;
-        case 4: // 收集
+        }
+        case 4: { // 收集
             UpdateGameStatus("你开始收集物品...");
-            AddChatMessage("派蒙: 周围有没有什么可以收集的东西呢？", true);
+            // 查找并收集第一个可收集的物品
+            bool hasCollectible = false;
+            for (int i = 0; i < current_map_entities_.size(); ++i) {
+                const auto& entity = current_map_entities_[i];
+                if (entity.find("物品:") != std::string::npos) {
+                    hasCollectible = true;
+                    HandleMapEntitySelection(i); // 直接收集找到的物品
+                    break;
+                }
+            }
+            if (!hasCollectible) {
+                AddChatMessage("派蒙: 当前区域没有可以收集的物品。", true);
+            }
             break;
-        case 5: // 帮助
+        }
+        case 5: { // 帮助
             AddChatMessage("派蒙: 使用↑↓箭头键选择命令，按Enter键执行。", true);
             AddChatMessage("可用命令包括：移动、攻击、查看、交谈、收集和帮助。", true);
+            AddChatMessage("提示：选择'交谈'或'收集'命令会自动与当前环境中的NPC或物品交互。", true);
             break;
+        }
     }
 }
 
@@ -488,14 +590,24 @@ void GameplayScreen::HideToolOverlay() {
 
 void GameplayScreen::HandleToolOption(int optionIndex) {
     HideToolOverlay();
+    GameState& gameState = GameState::getInstance();
     
     switch (optionIndex) {
-        case 0: // 背包
+        case 0: { // 背包
             AddChatMessage("派蒙: 打开背包查看物品", true);
-            if (navigation_callback_) {
-                navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Inventory"));
+            // 显示背包信息
+            const auto& inventory = gameState.getInventory();
+            if (inventory.empty()) {
+                AddChatMessage("派蒙: 你的背包是空的！", true);
+            } else {
+                AddChatMessage("派蒙: 你的背包里有以下物品：", true);
+                for (size_t i = 0; i < inventory.size(); ++i) {
+                    AddChatMessage("  " + std::to_string(i + 1) + ". " + 
+                                 inventory[i].name + " x" + std::to_string(inventory[i].stackSize));
+                }
             }
             break;
+        }
         case 1: // 地图
             AddChatMessage("派蒙: 显示世界地图", true);
             ShowMapOverlay();

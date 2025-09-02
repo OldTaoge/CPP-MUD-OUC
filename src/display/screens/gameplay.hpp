@@ -5,6 +5,7 @@
 #ifndef CPP_MUD_OUC_GAMEPLAY_HPP
 #define CPP_MUD_OUC_GAMEPLAY_HPP
 #include "../display.hpp"
+#include "../../core/gamestate.h"
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <string>

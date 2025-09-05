@@ -9,7 +9,7 @@
 #include "screens/mainmenu.hpp"
 #include "screens/illustrateMenu.hpp"
 #include "screens/settings.hpp"
-#include "screens/gameplay.hpp"
+#include "screens/inventory.hpp"
 
 using namespace ftxui;
 
@@ -18,29 +18,30 @@ ScreenManager::ScreenManager()
       currentScreen_("MainMenu"),
       nextScreen_(""),
       shouldQuit_(false),
-      shouldSwitchScreen_(false)
+      shouldSwitchScreen_(false),
+      game_() // 初始化游戏对象
 {
     // 创建导航回调
-    auto nav_callback = [this](const NavigationRequest& request) {
+    auto nav_callback = [this](const NavigationRequest &request) {
         this->HandleNavigationRequest(request);
     };
-    
+
     // 创建MainMenu屏幕实例
     screens_["MainMenu"] = new ScreenMainMenu();
     screens_["MainMenu"]->SetNavigationCallback(nav_callback);
-    
-    // 创建游戏主界面实例
-    screens_["Gameplay"] = new GameplayScreen();
-    screens_["Gameplay"]->SetNavigationCallback(nav_callback);
-    
+
     // 创建游戏说明屏幕实例
     screens_["Illustrate"] = new IllustrateMenu();
     screens_["Illustrate"]->SetNavigationCallback(nav_callback);
-    
+
     // 创建设置屏幕实例
     screens_["Settings"] = new SettingsScreen();
     screens_["Settings"]->SetNavigationCallback(nav_callback);
-    
+
+    // 创建背包屏幕实例
+    screens_["Inventory"] = new InventoryScreen(&game_);
+    screens_["Inventory"]->SetNavigationCallback(nav_callback);
+
     // 创建第一个屏幕实例
     CreateNewScreen();
 }
@@ -68,6 +69,15 @@ void ScreenManager::HandleNavigationRequest(const NavigationRequest& request) {
             if (screen_) {
                 screen_->Exit();
             }
+            break;
+        case NavigationAction::START_NEW_GAME:
+            StartNewGame();
+            break;
+        case NavigationAction::LOAD_GAME:
+            LoadGame();
+            break;
+        case NavigationAction::SAVE_GAME:
+            SaveGame();
             break;
         case NavigationAction::QUIT_GAME:
             shouldQuit_ = true;
@@ -128,4 +138,28 @@ void ScreenManager::mainloop() {
             break;
         }
     }
+}
+
+void ScreenManager::StartNewGame() {
+    game_.StartNewGame();
+    // 切换到游戏界面
+    nextScreen_ = "Inventory"; // 暂时切换到背包界面作为游戏界面
+    shouldSwitchScreen_ = true;
+    if (screen_) {
+        screen_->Exit();
+    }
+}
+
+void ScreenManager::LoadGame() {
+    game_.LoadGame();
+    // 切换到游戏界面
+    nextScreen_ = "Inventory";
+    shouldSwitchScreen_ = true;
+    if (screen_) {
+        screen_->Exit();
+    }
+}
+
+void ScreenManager::SaveGame() {
+    game_.SaveGame();
 }

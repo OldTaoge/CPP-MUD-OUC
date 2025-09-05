@@ -6,6 +6,12 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(FTXUI-src)
 add_executable(CPP_MUD_OUC core/main.cpp
+        core/item.cpp
+        core/item.h
+        core/inventory.cpp
+        core/inventory.h
+        core/team_member.cpp
+        core/team_member.h
         player/player.cpp
         player/player.h
         core/game.cpp
@@ -18,12 +24,10 @@ add_executable(CPP_MUD_OUC core/main.cpp
         storage/storage.h
         interaction/interaction.cpp
         interaction/interaction.h
-        loader/loader.cpp
-        loader/loader.h
         display/screens/mainmenu.cpp
         display/screens/mainmenu.hpp
-        display/screens/gameplay.cpp
-        display/screens/gameplay.hpp
+        display/screens/inventory.cpp
+        display/screens/inventory.hpp
         display/screens/illustrateMenu.cpp
         display/screens/illustrateMenu.hpp
         display/screens/settings.cpp

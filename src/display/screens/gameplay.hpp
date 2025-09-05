@@ -24,7 +24,7 @@ public:
 
     // 游戏状态更新方法
     void UpdatePlayerInfo(const Player& player);
-    void AddChatMessage(const std::string& message, bool isLLM = false);
+    void AddChatMessage(const std::string& message);
     void UpdateGameStatus(const std::string& status);
     void UpdateTeamStatus(const std::vector<std::string>& teamMembers);
 

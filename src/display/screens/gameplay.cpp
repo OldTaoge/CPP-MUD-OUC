@@ -28,18 +28,8 @@ GameplayScreen::GameplayScreen() {
     player_hp_ = 100;
     player_max_hp_ = 100;
     player_status_ = "正常";
-    team_members_ = {"派蒙", "温迪", "钟离"};
-    
-    // 添加一些初始消息
-    AddChatMessage("欢迎来到《原神》世界！我是派蒙，你的向导。", true);
-    AddChatMessage("有什么需要帮助的吗？输入帮助查看命令。");
-    UpdateGameStatus("你站在蒙德城的广场上，周围是熙熙攘攘的人群。");
-    
-    // 创建聊天输入组件
-    chat_input_ = Input(&chat_input_buffer_, "与派蒙对话...");
-    
-    // 创建游戏命令输入组件
-    game_input_ = Input(&game_input_buffer_, "输入游戏命令...");
+    team_members_ = {"安伯", "凯亚", "丽莎"};
+
     
     // 创建单一工具按钮
     tool_button_ = Button("工具", [this] {
@@ -69,8 +59,6 @@ GameplayScreen::GameplayScreen() {
     
     // 创建主组件
     component_ = Container::Vertical({
-        chat_input_,
-        game_input_,
         tool_button_,
         tool_overlay_
     });
@@ -80,45 +68,13 @@ GameplayScreen::GameplayScreen() {
         // 检查输入缓冲区变化并处理
         static std::string last_chat_input = "";
         static std::string last_game_input = "";
-        
-        if (chat_input_buffer_ != last_chat_input && !chat_input_buffer_.empty() && 
-            chat_input_buffer_.find('\n') != std::string::npos) {
-            // 聊天输入完成
-            std::string input = chat_input_buffer_;
-            input.erase(std::remove(input.begin(), input.end(), '\n'), input.end());
-            if (!input.empty()) {
-                AddChatMessage("你: " + input);
-                AddChatMessage("派蒙: 我明白了！让我想想...", true);
-            }
-            chat_input_buffer_.clear();
-        }
-        
-        if (game_input_buffer_ != last_game_input && !game_input_buffer_.empty() && 
-            game_input_buffer_.find('\n') != std::string::npos) {
-            // 游戏命令输入完成
-            std::string input = game_input_buffer_;
-            input.erase(std::remove(input.begin(), input.end(), '\n'), input.end());
-            if (!input.empty()) {
-                HandleGameCommand(input);
-            }
-            game_input_buffer_.clear();
-        }
-        
-        last_chat_input = chat_input_buffer_;
-        last_game_input = game_input_buffer_;
-        
-        // 构建聊天消息元素
-        Elements chat_elements;
-        for (const auto& msg : chat_messages_) {
-            chat_elements.push_back(text(msg) | color(Color::White));
-        }
-        
+
         // 构建游戏消息元素
         Elements game_elements;
         for (const auto& msg : game_messages_) {
             game_elements.push_back(text(msg) | color(Color::White));
         }
-        
+
         // 构建队伍成员元素
         Elements team_elements;
         for (const auto& member : team_members_) {
@@ -133,24 +89,7 @@ GameplayScreen::GameplayScreen() {
                 tool_button_->Render()
             }),
             separator(),
-            vbox({
-                vbox(chat_elements) | flex | border,
-                hbox({
-                    text("你: ") | color(Color::Cyan),
-                    chat_input_->Render() | flex
-                })
-            }) | flex
-        }) | size(HEIGHT, EQUAL, 15);  // 固定高度为15行
-        /*
-        auto tool_area = vbox({
-            text("工具") | bold | color(Color::Blue),
-            separator(),
-            hbox({
-                text("工具") | bold | color(Color::Blue),
-                tool_button_->Render() | hcenter
-            }) | hcenter
-        }) | size(WIDTH, LESS_THAN, 25);
-        */
+        }) | size(HEIGHT, EQUAL, 5);  // 固定高度为5行
         auto top_row = hbox({
             chat_area | flex,
             separator(),
@@ -229,7 +168,7 @@ void GameplayScreen::UpdatePlayerInfo(const Player& player) {
     // 这里可以添加更多玩家信息的更新
 }
 
-void GameplayScreen::AddChatMessage(const std::string& message, bool isLLM) {
+void GameplayScreen::AddChatMessage(const std::string& message) {
     chat_messages_.push_back(message);
     // 限制消息数量，避免内存占用过多
     if (chat_messages_.size() > 50) {

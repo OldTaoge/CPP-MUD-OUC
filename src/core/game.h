@@ -1,6 +1,7 @@
 #pragma once
 #include "../player/player.h"
 #include "../storage/storage.h"
+#include "map.h"
 #include <string>
 #include <vector>
 
@@ -43,11 +44,21 @@ public:
     void updatePlayerPosition(int x, int y);
     void addExperience(int exp);
     void levelUp();
+    
+    // 地图系统
+    MapManager& getMapManager() { return mapManager_; }
+    const MapManager& getMapManager() const { return mapManager_; }
+    
+    // 地图交互
+    InteractionResult interactWithMap(InteractionType interactionType);
+    bool movePlayer(int deltaX, int deltaY);
+    std::vector<InteractionType> getAvailableMapInteractions() const;
 
 private:
     Player player_;
     GameSave gameSave_;
     GameState currentState_;
+    MapManager mapManager_;
     
     // 辅助方法
     void setupInitialInventory();

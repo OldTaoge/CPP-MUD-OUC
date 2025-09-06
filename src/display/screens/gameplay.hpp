@@ -16,7 +16,7 @@ class Player;
 
 class GameplayScreen : public BaseScreen {
 public:
-    GameplayScreen();
+    GameplayScreen(Game* game = nullptr);
     ~GameplayScreen() = default;
 
     // 实现基类的虚函数
@@ -41,7 +41,6 @@ private:
     ftxui::Component chat_input_;
     ftxui::Component game_input_;
     ftxui::Component tool_button_;
-    ftxui::Component tool_overlay_;  // 工具叠加图层
     ftxui::Component close_button_;  // 关闭按钮
     std::vector<ftxui::Component> tool_option_buttons_;  // 工具选项按钮
     
@@ -64,6 +63,9 @@ private:
     // 选择状态
     int selected_tool_button_ = 0;
     bool show_tool_overlay_ = false;  // 是否显示工具叠加图层
+    
+    // 游戏对象引用
+    Game* game_;
 };
 
 #endif //CPP_MUD_OUC_GAMEPLAY_HPP

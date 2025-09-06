@@ -287,7 +287,7 @@ void InventoryScreen::CreateActionButtons() {
     // 返回按钮
     auto backButton = Button("返回", [this] {
         if (navigation_callback_) {
-            navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "MainMenu"));
+            navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Gameplay"));
         }
     });
     buttons.push_back(backButton);

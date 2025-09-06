@@ -12,6 +12,8 @@ add_executable(CPP_MUD_OUC core/main.cpp
         core/inventory.h
         core/team_member.cpp
         core/team_member.h
+        core/map.cpp
+        core/map.h
         player/player.cpp
         player/player.h
         core/game.cpp
@@ -32,6 +34,10 @@ add_executable(CPP_MUD_OUC core/main.cpp
         display/screens/illustrateMenu.hpp
         display/screens/settings.cpp
         display/screens/settings.hpp
+        display/screens/gameplay.cpp
+        display/screens/gameplay.hpp
+        display/screens/map.cpp
+        display/screens/map.hpp
         utils/utils.cpp
         utils/utils.hpp)
 

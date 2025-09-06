@@ -60,6 +60,9 @@ void Game::InitializeNewPlayer() {
     // 设置初始背包
     setupInitialInventory();
     
+    // 初始化地图系统
+    mapManager_.setPlayerPosition(0, 0);
+    
     std::cout << "新游戏初始化完成！" << std::endl;
 }
 
@@ -132,4 +135,24 @@ void Game::setupInitialTeam() {
             }
         }
     }
+}
+
+// 地图系统相关方法
+InteractionResult Game::interactWithMap(InteractionType interactionType) {
+    return mapManager_.interactWithCurrentBlock(player_, interactionType);
+}
+
+bool Game::movePlayer(int deltaX, int deltaY) {
+    if (mapManager_.movePlayer(deltaX, deltaY)) {
+        // 更新玩家坐标
+        auto pos = mapManager_.getPlayerPosition();
+        player_.x = pos.first;
+        player_.y = pos.second;
+        return true;
+    }
+    return false;
+}
+
+std::vector<InteractionType> Game::getAvailableMapInteractions() const {
+    return mapManager_.getAvailableInteractions();
 }

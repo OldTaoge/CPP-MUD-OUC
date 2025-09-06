@@ -10,6 +10,8 @@
 #include "screens/illustrateMenu.hpp"
 #include "screens/settings.hpp"
 #include "screens/inventory.hpp"
+#include "screens/gameplay.hpp"
+#include "screens/map.hpp"
 
 using namespace ftxui;
 
@@ -41,6 +43,14 @@ ScreenManager::ScreenManager()
     // 创建背包屏幕实例
     screens_["Inventory"] = new InventoryScreen(&game_);
     screens_["Inventory"]->SetNavigationCallback(nav_callback);
+
+    // 创建游戏界面屏幕实例
+    screens_["Gameplay"] = new GameplayScreen(&game_);
+    screens_["Gameplay"]->SetNavigationCallback(nav_callback);
+
+    // 创建地图界面屏幕实例
+    screens_["Map"] = new MapScreen(&game_);
+    screens_["Map"]->SetNavigationCallback(nav_callback);
 
     // 创建第一个屏幕实例
     CreateNewScreen();
@@ -143,7 +153,7 @@ void ScreenManager::mainloop() {
 void ScreenManager::StartNewGame() {
     game_.StartNewGame();
     // 切换到游戏界面
-    nextScreen_ = "Inventory"; // 暂时切换到背包界面作为游戏界面
+    nextScreen_ = "Gameplay";
     shouldSwitchScreen_ = true;
     if (screen_) {
         screen_->Exit();
@@ -153,7 +163,7 @@ void ScreenManager::StartNewGame() {
 void ScreenManager::LoadGame() {
     game_.LoadGame();
     // 切换到游戏界面
-    nextScreen_ = "Inventory";
+    nextScreen_ = "Gameplay";
     shouldSwitchScreen_ = true;
     if (screen_) {
         screen_->Exit();

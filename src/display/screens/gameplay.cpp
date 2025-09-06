@@ -123,7 +123,7 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     std::vector<ftxui::Component> bottom_components;
     bottom_components.push_back(tool_button_);
     bottom_components.push_back(ftxui::Renderer([this] {
-        return ftxui::text("Use W/A/S/D to move, Space to interact, T for tools");
+        return ftxui::text("W/A/S/D移动 空格交互 T工具菜单 Q/E切换队友");
     }));
     
     // 主组件
@@ -201,6 +201,12 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
                 return true;
             } else if (event == ftxui::Event::Character(' ')) {
                 HandleGameCommand("interact");
+                return true;
+            } else if (event == ftxui::Event::Character('q') || event == ftxui::Event::Character('Q')) {
+                HandleGameCommand("switch_next_member");
+                return true;
+            } else if (event == ftxui::Event::Character('e') || event == ftxui::Event::Character('E')) {
+                HandleGameCommand("switch_prev_member");
                 return true;
             }
         }
@@ -307,6 +313,28 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
         } else {
             UpdateGameStatus("无法向东移动");
         }
+    } else if (command == "switch_next_member") {
+        auto& player = game_->getPlayer();
+        if (player.switchToNextActiveMember()) {
+            UpdatePlayerInfo(player);
+            auto activeMember = player.getActiveMember();
+            if (activeMember) {
+                UpdateGameStatus("切换到队友: " + activeMember->getName());
+            }
+        } else {
+            UpdateGameStatus("无法切换队友");
+        }
+    } else if (command == "switch_prev_member") {
+        auto& player = game_->getPlayer();
+        if (player.switchToPreviousActiveMember()) {
+            UpdatePlayerInfo(player);
+            auto activeMember = player.getActiveMember();
+            if (activeMember) {
+                UpdateGameStatus("切换到队友: " + activeMember->getName());
+            }
+        } else {
+            UpdateGameStatus("无法切换队友");
+        }
     } else if (command == "interact") {
         auto interactions = game_->getAvailableMapInteractions();
         if (!interactions.empty()) {
@@ -354,7 +382,11 @@ void GameplayScreen::HandleToolOption(int optionIndex) {
                 UpdateGameStatus("错误: 导航回调未设置");
             }
         } else if (option == "队伍") {
-            UpdateGameStatus("队伍管理功能暂未实现");
+            if (navigation_callback_) {
+                navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Team"));
+            } else {
+                UpdateGameStatus("错误: 导航回调未设置");
+            }
         } else if (option == "地图") {
             if (navigation_callback_) {
                 navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Map"));

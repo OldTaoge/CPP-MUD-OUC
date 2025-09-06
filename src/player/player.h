@@ -14,6 +14,7 @@ public:
     // 队伍成员
     std::vector<std::shared_ptr<TeamMember>> teamMembers;
     std::shared_ptr<TeamMember> activeMember; // 当前活跃的队伍成员
+    static const int MAX_ACTIVE_MEMBERS = 4; // 最大上场人数
 
     // 背包
     Inventory inventory;
@@ -25,6 +26,18 @@ public:
     void setActiveMember(int index);
     std::shared_ptr<TeamMember> getActiveMember() const { return activeMember; }
     std::vector<std::shared_ptr<TeamMember>> getTeamMembers() const { return teamMembers; }
+    
+    // 队伍配置管理
+    bool setMemberActive(int index, bool active);
+    std::vector<std::shared_ptr<TeamMember>> getActiveMembers() const;
+    std::vector<std::shared_ptr<TeamMember>> getStandbyMembers() const;
+    int getActiveCount() const;
+    bool canAddActiveMembers() const { return getActiveCount() < MAX_ACTIVE_MEMBERS; }
+    
+    // 队友切换
+    bool switchToNextActiveMember();
+    bool switchToPreviousActiveMember();
+    bool switchToMember(int index);
 
     // 物品管理
     InventoryResult addItemToInventory(std::shared_ptr<Item> item);

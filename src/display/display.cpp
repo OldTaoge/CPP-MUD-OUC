@@ -12,6 +12,7 @@
 #include "screens/inventory.hpp"
 #include "screens/gameplay.hpp"
 #include "screens/map.hpp"
+#include "screens/team.hpp"
 
 using namespace ftxui;
 
@@ -51,6 +52,10 @@ ScreenManager::ScreenManager()
     // 创建地图界面屏幕实例
     screens_["Map"] = new MapScreen(&game_);
     screens_["Map"]->SetNavigationCallback(nav_callback);
+
+    // 创建队伍配置屏幕实例
+    screens_["Team"] = new TeamScreen(&game_);
+    screens_["Team"]->SetNavigationCallback(nav_callback);
 
     // 创建第一个屏幕实例
     CreateNewScreen();

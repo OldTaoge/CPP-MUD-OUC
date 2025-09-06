@@ -122,8 +122,12 @@ void Game::setupInitialInventory() {
 }
 
 void Game::setupInitialTeam() {
-    // 添加初始队伍成员
+    // 添加初始队伍成员 - 旅行者
     player_.addTeamMember("旅行者", 1);
+    
+    // 添加一些初始队友供测试
+    player_.addTeamMember("芭芭拉", 1);
+    player_.addTeamMember("安柏", 1);
     
     // 为第一个队伍成员装备初始武器
     if (!player_.teamMembers.empty()) {

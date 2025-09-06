@@ -38,6 +38,8 @@ add_executable(CPP_MUD_OUC core/main.cpp
         display/screens/gameplay.hpp
         display/screens/map.cpp
         display/screens/map.hpp
+        display/screens/team.cpp
+        display/screens/team.hpp
         utils/utils.cpp
         utils/utils.hpp)
 

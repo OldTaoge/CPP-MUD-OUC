@@ -3,6 +3,13 @@
 #include <string>
 #include <memory>
 
+// 队伍成员状态枚举
+enum class MemberStatus {
+    ACTIVE,      // 上场
+    STANDBY,     // 待命
+    INJURED      // 受伤
+};
+
 class TeamMember {
 public:
     TeamMember(const std::string& name, int level = 1);
@@ -12,6 +19,12 @@ public:
     std::string getName() const { return name_; }
     int getLevel() const { return level_; }
     void setLevel(int level) { level_ = level; }
+    
+    // 队伍状态管理
+    MemberStatus getStatus() const { return status_; }
+    void setStatus(MemberStatus status) { status_ = status; }
+    bool isActive() const { return status_ == MemberStatus::ACTIVE; }
+    bool canBeActive() const { return status_ != MemberStatus::INJURED || getCurrentHealth() > 0; }
 
     // 基础属性
     int getBaseHealth() const { return baseHealth_; }
@@ -44,6 +57,7 @@ private:
     std::string name_;
     int level_;
     int currentHealth_;
+    MemberStatus status_;  // 队伍状态
 
     // 基础属性
     int baseHealth_;

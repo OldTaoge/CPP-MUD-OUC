@@ -20,12 +20,148 @@ InventoryResult Player::removeItemFromInventory(const std::string& itemName, int
 void Player::addTeamMember(const std::string& name, int level) {
     auto member = std::make_shared<TeamMember>(name, level);
     teamMembers.push_back(member);
+    
+    // 如果是第一个成员，自动设为上场状态
+    if (teamMembers.size() == 1) {
+        member->setStatus(MemberStatus::ACTIVE);
+        activeMember = member;
+    }
 }
 
 void Player::setActiveMember(int index) {
     if (index >= 0 && index < static_cast<int>(teamMembers.size())) {
-        activeMember = teamMembers[index];
+        auto member = teamMembers[index];
+        if (member->isActive()) {
+            activeMember = member;
+        }
     }
+}
+
+bool Player::setMemberActive(int index, bool active) {
+    if (index < 0 || index >= static_cast<int>(teamMembers.size())) {
+        return false;
+    }
+    
+    auto member = teamMembers[index];
+    
+    if (active) {
+        // 检查是否可以添加更多上场成员
+        if (!canAddActiveMembers() && !member->isActive()) {
+            return false;
+        }
+        
+        // 检查成员是否可以上场
+        if (!member->canBeActive()) {
+            return false;
+        }
+        
+        member->setStatus(MemberStatus::ACTIVE);
+        
+        // 如果当前没有活跃成员，设置为当前活跃成员
+        if (!activeMember) {
+            activeMember = member;
+        }
+    } else {
+        // 不能让所有成员都下场
+        if (getActiveCount() <= 1) {
+            return false;
+        }
+        
+        member->setStatus(MemberStatus::STANDBY);
+        
+        // 如果这是当前活跃成员，切换到下一个
+        if (activeMember == member) {
+            switchToNextActiveMember();
+        }
+    }
+    
+    return true;
+}
+
+std::vector<std::shared_ptr<TeamMember>> Player::getActiveMembers() const {
+    std::vector<std::shared_ptr<TeamMember>> activeMembers;
+    for (const auto& member : teamMembers) {
+        if (member->isActive()) {
+            activeMembers.push_back(member);
+        }
+    }
+    return activeMembers;
+}
+
+std::vector<std::shared_ptr<TeamMember>> Player::getStandbyMembers() const {
+    std::vector<std::shared_ptr<TeamMember>> standbyMembers;
+    for (const auto& member : teamMembers) {
+        if (!member->isActive()) {
+            standbyMembers.push_back(member);
+        }
+    }
+    return standbyMembers;
+}
+
+int Player::getActiveCount() const {
+    int count = 0;
+    for (const auto& member : teamMembers) {
+        if (member->isActive()) {
+            count++;
+        }
+    }
+    return count;
+}
+
+bool Player::switchToNextActiveMember() {
+    auto activeMembers = getActiveMembers();
+    if (activeMembers.empty()) {
+        return false;
+    }
+    
+    // 找到当前活跃成员的索引
+    int currentIndex = -1;
+    for (int i = 0; i < activeMembers.size(); ++i) {
+        if (activeMembers[i] == activeMember) {
+            currentIndex = i;
+            break;
+        }
+    }
+    
+    // 切换到下一个
+    int nextIndex = (currentIndex + 1) % activeMembers.size();
+    activeMember = activeMembers[nextIndex];
+    return true;
+}
+
+bool Player::switchToPreviousActiveMember() {
+    auto activeMembers = getActiveMembers();
+    if (activeMembers.empty()) {
+        return false;
+    }
+    
+    // 找到当前活跃成员的索引
+    int currentIndex = -1;
+    for (int i = 0; i < activeMembers.size(); ++i) {
+        if (activeMembers[i] == activeMember) {
+            currentIndex = i;
+            break;
+        }
+    }
+    
+    // 切换到上一个
+    int prevIndex = (currentIndex - 1 + activeMembers.size()) % activeMembers.size();
+    activeMember = activeMembers[prevIndex];
+    return true;
+}
+
+bool Player::switchToMember(int index) {
+    if (index < 0 || index >= static_cast<int>(teamMembers.size())) {
+        return false;
+    }
+    
+    auto member = teamMembers[index];
+    if (member->isActive()) {
+        activeMember = member;
+        return true;
+    }
+    
+    return false;
 }
 
 InventoryResult Player::useItem(const std::string& itemName) {

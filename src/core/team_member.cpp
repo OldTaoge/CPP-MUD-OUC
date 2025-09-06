@@ -1,7 +1,7 @@
 #include "team_member.h"
 
 TeamMember::TeamMember(const std::string& name, int level)
-    : name_(name), level_(level), currentHealth_(0),
+    : name_(name), level_(level), currentHealth_(0), status_(MemberStatus::STANDBY),
       baseHealth_(100), baseAttack_(10), baseDefense_(5),
       equippedWeapon_(nullptr), equippedArtifact_(nullptr) {
     // 根据等级调整基础属性

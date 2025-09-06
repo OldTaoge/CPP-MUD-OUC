@@ -12,8 +12,8 @@ add_executable(CPP_MUD_OUC core/main.cpp
         core/inventory.h
         core/team_member.cpp
         core/team_member.h
-        core/map.cpp
-        core/map.h
+        core/map_v2.cpp
+        core/map_v2.h
         player/player.cpp
         player/player.h
         core/game.cpp

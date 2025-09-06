@@ -1,6 +1,6 @@
 #include "map.hpp"
 #include "../../core/game.h"
-#include "../../core/map.h"
+#include "../../core/map_v2.h"
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
@@ -9,8 +9,18 @@
 #include <algorithm>
 
 MapScreen::MapScreen(Game* game) : game_(game), player_x_(0), player_y_(0) {
+    // 初始化默认值
+    player_name_ = "未知玩家";
+    player_status_ = "状态未知";
+    current_block_info_ = "位置信息加载中...";
+    
     // 初始化地图显示
     map_lines_.resize(MAP_HEIGHT, std::string(MAP_WIDTH * 2, ' '));
+    
+    // 如果游戏对象存在，立即更新数据
+    if (game_) {
+        UpdateMapData(*game_);
+    }
     
     // 创建UI组件
     map_display_ = ftxui::Renderer([this] {
@@ -20,6 +30,10 @@ MapScreen::MapScreen(Game* game) : game_(game), player_x_(0), player_y_(0) {
         elements.push_back(ftxui::text("=== 游戏地图 ===") | ftxui::bold | ftxui::center);
         elements.push_back(ftxui::separator());
         
+        // 添加视图切换提示
+        elements.push_back(ftxui::text("按 TAB 切换视图: 当前区块 / 完整地图"));
+        elements.push_back(ftxui::separator());
+        
         // 地图显示
         for (const auto& line : map_lines_) {
             elements.push_back(ftxui::text(line));
@@ -27,7 +41,13 @@ MapScreen::MapScreen(Game* game) : game_(game), player_x_(0), player_y_(0) {
         
         // 图例
         elements.push_back(ftxui::separator());
-        elements.push_back(ftxui::text("图例: P=玩家 T=教学区 S=七天神像 B=战斗区 D=对话区 C=城市"));
+        if (show_full_map_) {
+            elements.push_back(ftxui::text("完整地图模式 - 显示所有区块状态和连接关系"));
+        } else {
+            elements.push_back(ftxui::text("当前区块模式 - 显示9x9区块详细地图"));
+            elements.push_back(ftxui::text("图例: P=玩家 #=墙壁 .=空地 I=物品 A=安伯 K=凯亚 S=神像 M=怪物"));
+            elements.push_back(ftxui::text("出口: ^=北 v=南 <=西 >=东"));
+        }
         
         return ftxui::vbox(elements);
     });
@@ -79,7 +99,7 @@ MapScreen::MapScreen(Game* game) : game_(game), player_x_(0), player_y_(0) {
     // 关闭按钮
     close_button_ = ftxui::Button("返回游戏", [this] {
         if (navigation_callback_) {
-            navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "gameplay"));
+            navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Gameplay"));
         }
     });
     
@@ -139,6 +159,9 @@ MapScreen::MapScreen(Game* game) : game_(game), player_x_(0), player_y_(0) {
             } else if (event == ftxui::Event::Character(' ')) {
                 HandleInteraction();
                 return true;
+            } else if (event == ftxui::Event::Tab) {
+                ToggleMapView();
+                return true;
             }
         }
         return false;
@@ -150,26 +173,50 @@ ftxui::Component MapScreen::GetComponent() {
 }
 
 void MapScreen::UpdateMapData(const Game& game) {
-    // 更新玩家信息
-    const auto& player = game.getPlayer();
-    player_name_ = player.name;
-    player_x_ = player.x;
-    player_y_ = player.y;
-    
-    // 更新地图显示
-    const auto& mapManager = game.getMapManager();
-    map_lines_ = mapManager.renderMap(MAP_WIDTH, MAP_HEIGHT);
-    
-    // 更新当前区块信息
-    current_block_info_ = mapManager.getCurrentBlockInfo();
-    
-    // 更新玩家状态
-    std::stringstream ss;
-    ss << "等级: " << player.level << " 经验: " << player.experience;
-    if (!player.teamMembers.empty()) {
-        ss << " 队伍: " << player.teamMembers.size() << "人";
+    try {
+        // 更新玩家信息
+        const auto& player = game.getPlayer();
+        player_name_ = player.name;
+        player_x_ = player.x;
+        player_y_ = player.y;
+        
+        // 更新地图显示
+        const auto& mapManager = game.getMapManager();
+        std::vector<std::string> newMapLines;
+        
+        if (show_full_map_) {
+            newMapLines = mapManager.renderFullMap();
+        } else {
+            newMapLines = mapManager.renderCurrentBlock();
+        }
+        
+        // 确保地图数据有效
+        if (!newMapLines.empty()) {
+            map_lines_ = newMapLines;
+        } else {
+            map_lines_ = {"地图数据加载失败"};
+        }
+        
+        // 更新当前区块信息
+        std::string cellInfo = mapManager.getCurrentCellInfo();
+        std::string blockInfo = mapManager.getBlockInfo();
+        current_block_info_ = cellInfo + "\n" + blockInfo;
+        
+        // 更新玩家状态
+        std::stringstream ss;
+        ss << "等级: " << player.level << " 经验: " << player.experience;
+        if (!player.teamMembers.empty()) {
+            ss << " 队伍: " << player.teamMembers.size() << "人";
+        }
+        player_status_ = ss.str();
+        
+    } catch (const std::exception& e) {
+        // 错误处理
+        player_name_ = "错误";
+        player_status_ = "数据更新失败: " + std::string(e.what());
+        current_block_info_ = "无法获取位置信息";
+        map_lines_ = {"地图加载错误"};
     }
-    player_status_ = ss.str();
 }
 
 void MapScreen::AddMapMessage(const std::string& message) {
@@ -275,4 +322,30 @@ void MapScreen::HandleInteractionOption(int optionIndex) {
 void MapScreen::UpdateMapDisplay() {
     // 强制更新地图显示
     // 这个方法可以在需要时被调用来刷新显示
+}
+
+void MapScreen::RefreshMapDisplay() {
+    if (game_) {
+        try {
+            UpdateMapData(*game_);
+            AddMapMessage("地图数据已刷新");
+        } catch (const std::exception& e) {
+            AddMapMessage("地图刷新失败: " + std::string(e.what()));
+        }
+    } else {
+        AddMapMessage("无法刷新地图：游戏对象未初始化");
+    }
+}
+
+void MapScreen::ToggleMapView() {
+    show_full_map_ = !show_full_map_;
+    
+    if (show_full_map_) {
+        AddMapMessage("切换到完整地图视图");
+    } else {
+        AddMapMessage("切换到当前区块视图");
+    }
+    
+    // 立即刷新地图显示
+    RefreshMapDisplay();
 }

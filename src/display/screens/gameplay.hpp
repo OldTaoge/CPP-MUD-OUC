@@ -27,6 +27,7 @@ public:
     void AddChatMessage(const std::string& message);
     void UpdateGameStatus(const std::string& status);
     void UpdateTeamStatus(const std::vector<std::string>& teamMembers);
+    void UpdateMapDisplay();
 
 private:
     void HandleToolButton(int buttonIndex);
@@ -55,6 +56,10 @@ private:
     int player_max_hp_;
     std::string player_status_;
     std::vector<std::string> team_members_;
+    
+    // 地图显示
+    std::vector<std::string> current_map_lines_;
+    std::string current_block_info_;
     
     // 输入缓冲区
     std::string chat_input_buffer_;

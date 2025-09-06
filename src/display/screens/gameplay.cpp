@@ -17,6 +17,15 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         "保存游戏"
     };
     
+    // 初始化地图显示
+    current_map_lines_ = {"Loading map..."};
+    current_block_info_ = "Initializing...";
+    
+    // 如果游戏对象存在，立即更新地图
+    if (game_) {
+        UpdateMapDisplay();
+    }
+    
     // 创建UI组件
     chat_input_ = ftxui::Input(&chat_input_buffer_, "输入聊天消息...");
     game_input_ = ftxui::Input(&game_input_buffer_, "输入游戏命令...");
@@ -62,6 +71,25 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         for (const auto& member : team_members_) {
             elements.push_back(ftxui::text("• " + member));
         }
+        return ftxui::vbox(elements);
+    }));
+    
+    // 添加当前区块地图显示
+    left_components.push_back(ftxui::Renderer([this] {
+        std::vector<ftxui::Element> elements;
+        elements.push_back(ftxui::text("=== Current Area Map ===") | ftxui::bold);
+        
+        // 显示地图
+        for (const auto& line : current_map_lines_) {
+            elements.push_back(ftxui::text(line));
+        }
+        
+        // 显示当前位置信息
+        if (!current_block_info_.empty()) {
+            elements.push_back(ftxui::separator());
+            elements.push_back(ftxui::text(current_block_info_));
+        }
+        
         return ftxui::vbox(elements);
     }));
     
@@ -214,6 +242,27 @@ void GameplayScreen::UpdateTeamStatus(const std::vector<std::string>& teamMember
     team_members_ = teamMembers;
 }
 
+void GameplayScreen::UpdateMapDisplay() {
+    if (!game_) {
+        current_map_lines_ = {"Map not available"};
+        current_block_info_ = "Game not initialized";
+        return;
+    }
+    
+    try {
+        // 获取当前区块地图
+        const auto& mapManager = game_->getMapManager();
+        current_map_lines_ = mapManager.renderCurrentBlock();
+        
+        // 获取当前位置信息
+        current_block_info_ = mapManager.getCurrentCellInfo();
+        
+    } catch (const std::exception& e) {
+        current_map_lines_ = {"Map error"};
+        current_block_info_ = "Error: " + std::string(e.what());
+    }
+}
+
 void GameplayScreen::HandleToolButton(int buttonIndex) {
     if (buttonIndex >= 0 && buttonIndex < tool_options_.size()) {
         HandleToolOption(buttonIndex);
@@ -230,6 +279,7 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
         if (game_->movePlayer(0, -1)) {
             UpdateGameStatus("向北移动");
             UpdatePlayerInfo(game_->getPlayer());
+            UpdateMapDisplay();  // 实时更新地图
         } else {
             UpdateGameStatus("无法向北移动");
         }
@@ -237,6 +287,7 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
         if (game_->movePlayer(0, 1)) {
             UpdateGameStatus("向南移动");
             UpdatePlayerInfo(game_->getPlayer());
+            UpdateMapDisplay();  // 实时更新地图
         } else {
             UpdateGameStatus("无法向南移动");
         }
@@ -244,6 +295,7 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
         if (game_->movePlayer(-1, 0)) {
             UpdateGameStatus("向西移动");
             UpdatePlayerInfo(game_->getPlayer());
+            UpdateMapDisplay();  // 实时更新地图
         } else {
             UpdateGameStatus("无法向西移动");
         }
@@ -251,6 +303,7 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
         if (game_->movePlayer(1, 0)) {
             UpdateGameStatus("向东移动");
             UpdatePlayerInfo(game_->getPlayer());
+            UpdateMapDisplay();  // 实时更新地图
         } else {
             UpdateGameStatus("无法向东移动");
         }
@@ -262,6 +315,7 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
             UpdateGameStatus(result.message);
             if (result.success) {
                 UpdatePlayerInfo(game_->getPlayer());
+                UpdateMapDisplay();  // 交互后更新地图
             }
         } else {
             UpdateGameStatus("当前位置没有可交互的内容");

@@ -22,6 +22,7 @@ public:
     void UpdateMapData(const Game& game);
     void AddMapMessage(const std::string& message);
     void ClearMapMessages();
+    void RefreshMapDisplay();
 
 private:
     void HandleMovement(int deltaX, int deltaY);
@@ -30,6 +31,7 @@ private:
     void HideInteractionMenu();
     void HandleInteractionOption(int optionIndex);
     void UpdateMapDisplay();
+    void ToggleMapView();
     
     ftxui::Component component_;
     
@@ -54,6 +56,7 @@ private:
     // 选择状态
     int selected_interaction_ = 0;
     bool show_interaction_menu_ = false;
+    bool show_full_map_ = false;
     
     // 游戏对象引用
     Game* game_;

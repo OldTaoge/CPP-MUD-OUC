@@ -1,7 +1,7 @@
 #pragma once
 #include "../player/player.h"
 #include "../storage/storage.h"
-#include "map.h"
+#include "map_v2.h"
 #include <string>
 #include <vector>
 
@@ -46,8 +46,8 @@ public:
     void levelUp();
     
     // 地图系统
-    MapManager& getMapManager() { return mapManager_; }
-    const MapManager& getMapManager() const { return mapManager_; }
+    MapManagerV2& getMapManager() { return mapManager_; }
+    const MapManagerV2& getMapManager() const { return mapManager_; }
     
     // 地图交互
     InteractionResult interactWithMap(InteractionType interactionType);
@@ -58,7 +58,7 @@ private:
     Player player_;
     GameSave gameSave_;
     GameState currentState_;
-    MapManager mapManager_;
+    MapManagerV2 mapManager_;
     
     // 辅助方法
     void setupInitialInventory();

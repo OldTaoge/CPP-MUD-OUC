@@ -60,8 +60,8 @@ void Game::InitializeNewPlayer() {
     // 设置初始背包
     setupInitialInventory();
     
-    // 初始化地图系统
-    mapManager_.setPlayerPosition(0, 0);
+    // 初始化地图系统 - 从第一个区块开始
+    mapManager_.switchToBlock(0, 4, 4);
     
     std::cout << "新游戏初始化完成！" << std::endl;
 }
@@ -139,7 +139,7 @@ void Game::setupInitialTeam() {
 
 // 地图系统相关方法
 InteractionResult Game::interactWithMap(InteractionType interactionType) {
-    return mapManager_.interactWithCurrentBlock(player_, interactionType);
+    return mapManager_.interactWithCurrentCell(player_, interactionType);
 }
 
 bool Game::movePlayer(int deltaX, int deltaY) {

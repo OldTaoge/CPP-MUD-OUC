@@ -99,6 +99,16 @@ void ScreenManager::HandleNavigationRequest(const NavigationRequest& request) {
 }
 
 void ScreenManager::SwitchToScreen(const std::string& screenName) {
+    // 检查目标屏幕是否存在
+    if (screens_.count(screenName) == 0) {
+        std::cerr << "Error: Target screen '" << screenName << "' not found! Available screens: ";
+        for (const auto& pair : screens_) {
+            std::cerr << "'" << pair.first << "' ";
+        }
+        std::cerr << std::endl;
+        return; // 不进行切换，保持当前屏幕
+    }
+    
     // 删除旧的屏幕实例
     if (screen_) {
         // 先退出当前屏幕，确保所有任务都被清理
@@ -116,6 +126,22 @@ void ScreenManager::SwitchToScreen(const std::string& screenName) {
     
     // 更新当前屏幕名称
     currentScreen_ = screenName;
+    
+    // 如果切换到地图界面，更新地图数据
+    if (screenName == "Map" && screens_.count("Map")) {
+        MapScreen* mapScreen = dynamic_cast<MapScreen*>(screens_["Map"]);
+        if (mapScreen) {
+            mapScreen->UpdateMapData(game_);
+        }
+    }
+    
+    // 如果切换到游戏界面，更新游戏界面的地图显示
+    if (screenName == "Gameplay" && screens_.count("Gameplay")) {
+        GameplayScreen* gameplayScreen = dynamic_cast<GameplayScreen*>(screens_["Gameplay"]);
+        if (gameplayScreen) {
+            gameplayScreen->UpdateMapDisplay();
+        }
+    }
     
     // 创建新的屏幕实例
     screen_ = new ScreenInteractive(ScreenInteractive::Fullscreen());

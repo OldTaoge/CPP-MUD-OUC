@@ -4,6 +4,7 @@
 #include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/screen.hpp>
+#include <ftxui/screen/terminal.hpp>
 #include <sstream>
 #include <algorithm>
 
@@ -26,6 +27,10 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         UpdateMapDisplay();
     }
     
+    // 初始化玩家基础数值，避免未定义显示
+    player_level_ = 0;
+    player_experience_ = 0;
+
     // 创建UI组件
     chat_input_ = ftxui::Input(&chat_input_buffer_, "输入聊天消息...");
     game_input_ = ftxui::Input(&game_input_buffer_, "输入游戏命令...");
@@ -51,98 +56,130 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     }
     
     // 工具叠加图层已集成到主组件中，不再需要单独的组件
-    
-    // 创建主组件
-    std::vector<ftxui::Component> main_components;
-    
-    // 左侧：游戏信息
-    std::vector<ftxui::Component> left_components;
-    left_components.push_back(ftxui::Renderer([this] {
-        std::vector<ftxui::Element> elements;
-        elements.push_back(ftxui::text("=== Game Status ===") | ftxui::bold);
-        elements.push_back(ftxui::text("Player: " + player_name_));
-        elements.push_back(ftxui::text("HP: " + std::to_string(player_hp_) + "/" + std::to_string(player_max_hp_)));
-        elements.push_back(ftxui::text("Status: " + player_status_));
-        return ftxui::vbox(elements);
+
+    // 底部可点击操作按钮（鼠标/键盘）
+    bottom_action_buttons_.clear();
+    bottom_action_buttons_.push_back(ftxui::Button("交互", [this] { HandleGameCommand("interact"); }));
+    bottom_action_buttons_.push_back(ftxui::Button("背包", [this] {
+        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Inventory"));
     }));
-    left_components.push_back(ftxui::Renderer([this] {
-        std::vector<ftxui::Element> elements;
-        elements.push_back(ftxui::text("=== Team Members ===") | ftxui::bold);
-        for (const auto& member : team_members_) {
-            elements.push_back(ftxui::text("• " + member));
-        }
-        return ftxui::vbox(elements);
+    bottom_action_buttons_.push_back(ftxui::Button("队伍", [this] {
+        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Team"));
     }));
-    
-    // 添加当前区块地图显示
-    left_components.push_back(ftxui::Renderer([this] {
-        std::vector<ftxui::Element> elements;
-        elements.push_back(ftxui::text("=== Current Area Map ===") | ftxui::bold);
-        
-        // 显示地图
-        for (const auto& line : current_map_lines_) {
-            elements.push_back(ftxui::text(line));
-        }
-        
-        // 显示当前位置信息
+    bottom_action_buttons_.push_back(ftxui::Button("地图", [this] {
+        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Map"));
+    }));
+    bottom_action_buttons_.push_back(ftxui::Button("设置", [this] {
+        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Settings"));
+    }));
+    bottom_action_buttons_.push_back(ftxui::Button("保存", [this] {
+        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SAVE_GAME));
+    }));
+
+    // 顶栏：左工具按钮 / 中间标题 / 右侧简要状态
+    auto header_container = ftxui::Container::Horizontal({ tool_button_ });
+    auto header_renderer = ftxui::Renderer(header_container, [this] {
+        auto dims = ftxui::Terminal::Size();
+        int header_h = std::max(3, dims.dimy / 10); // 顶栏约 10%
+        std::string right_status = "Lv." + std::to_string(player_level_) +
+                                   "  HP: " + std::to_string(player_hp_) + "/" + std::to_string(player_max_hp_);
+        auto left = tool_button_->Render();
+        auto center_title = ftxui::text("原神MUD版") | ftxui::bold;
+        auto right = ftxui::text(right_status);
+        auto bar = ftxui::hbox({
+                   left,
+                   ftxui::filler(),
+                   center_title,
+                   ftxui::filler(),
+                   right,
+               }) | ftxui::border;
+        return bar | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, header_h);
+    });
+
+    // 中部：左“游戏消息”/右“游戏状态（详细）”
+    auto main_renderer = ftxui::Renderer([this] {
+        auto dims = ftxui::Terminal::Size();
+        int header_h = std::max(3, dims.dimy / 10);
+        int bottom_h = std::max(3, dims.dimy / 10);
+        int main_h = std::max(5, dims.dimy - header_h - bottom_h);
+        int message_h = std::max(5, main_h * 6 / 10); // 为消息预留约 60% 的高度
+
+        // 左侧：地图显示
+        std::vector<ftxui::Element> left;
+        left.push_back(ftxui::text("当前区域") | ftxui::bold);
+        left.push_back(ftxui::separator());
+        for (const auto& line : current_map_lines_) left.push_back(ftxui::text(line));
         if (!current_block_info_.empty()) {
-            elements.push_back(ftxui::separator());
-            elements.push_back(ftxui::text(current_block_info_));
+            left.push_back(ftxui::separator());
+            left.push_back(ftxui::text(current_block_info_));
         }
-        
-        return ftxui::vbox(elements);
-    }));
-    
-    // 右侧：聊天和输入
-    std::vector<ftxui::Component> right_components;
-    right_components.push_back(ftxui::Renderer([this] {
-        std::vector<ftxui::Element> elements;
-        elements.push_back(ftxui::text("=== Game Messages ===") | ftxui::bold);
-        for (const auto& message : game_messages_) {
-            elements.push_back(ftxui::text(message));
+        auto left_box = ftxui::vbox(left) | ftxui::border;
+
+        // 右侧：游戏消息（固定高度视口） + 游戏状态（玩家/队伍）
+        std::vector<ftxui::Element> right;
+        right.push_back(ftxui::text("游戏消息") | ftxui::bold);
+        right.push_back(ftxui::separator());
+        std::vector<ftxui::Element> msg_lines;
+        if (game_messages_.empty()) {
+            msg_lines.push_back(ftxui::text("暂无消息") | ftxui::color(ftxui::Color::GrayLight));
+        } else {
+            for (const auto& m : game_messages_) msg_lines.push_back(ftxui::text(m));
         }
-        return ftxui::vbox(elements);
-    }));
-    right_components.push_back(ftxui::Renderer([this] {
-        std::vector<ftxui::Element> elements;
-        elements.push_back(ftxui::text("=== Chat ===") | ftxui::bold);
-        for (const auto& message : chat_messages_) {
-            elements.push_back(ftxui::text(message));
+        auto messages_view = ftxui::vbox(msg_lines) | ftxui::vscroll_indicator | ftxui::yframe |
+                             ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, message_h);
+        right.push_back(messages_view);
+        right.push_back(ftxui::separator());
+        right.push_back(ftxui::text("游戏状态") | ftxui::bold);
+        right.push_back(ftxui::separator());
+        right.push_back(ftxui::text("玩家: " + player_name_));
+        right.push_back(ftxui::text("Lv." + std::to_string(player_level_)));
+        right.push_back(ftxui::text("HP: " + std::to_string(player_hp_) + "/" + std::to_string(player_max_hp_)));
+        right.push_back(ftxui::text(player_status_));
+        right.push_back(ftxui::separator());
+        right.push_back(ftxui::text("队伍成员:") | ftxui::bold)
+        ;
+        if (team_members_.empty()) {
+            right.push_back(ftxui::text("暂无队伍成员") | ftxui::color(ftxui::Color::GrayLight));
+        } else {
+            for (const auto& member : team_members_) right.push_back(ftxui::text("• " + member));
         }
-        return ftxui::vbox(elements);
-    }));
-    right_components.push_back(chat_input_);
-    right_components.push_back(game_input_);
-    
-    // 水平布局
-    std::vector<ftxui::Component> horizontal_components;
-    horizontal_components.push_back(ftxui::Container::Vertical(left_components));
-    horizontal_components.push_back(ftxui::Container::Vertical(right_components));
-    
-    // 底部：工具按钮
-    std::vector<ftxui::Component> bottom_components;
-    bottom_components.push_back(tool_button_);
-    bottom_components.push_back(ftxui::Renderer([this] {
-        return ftxui::text("W/A/S/D移动 空格交互 T工具菜单 Q/E切换队友");
-    }));
-    
-    // 主组件
-    main_components.push_back(ftxui::Container::Horizontal(horizontal_components));
-    main_components.push_back(ftxui::Container::Horizontal(bottom_components));
-    
-    component_ = ftxui::Container::Vertical(main_components);
-    
-    // 将工具菜单集成到主组件中
+        auto right_box = ftxui::vbox(right) | ftxui::border;
+
+        // 按 6:4 比例分配宽度
+        int left_w = std::max(20, dims.dimx * 6 / 10);
+        int right_w = std::max(10, dims.dimx - left_w);
+        auto left_sized = left_box | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, left_w);
+        auto right_sized = right_box | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, right_w);
+
+        return ftxui::hbox({ left_sized, right_sized }) | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, main_h);
+    });
+
+    // 底部：游戏操作选项（按钮 + 提示）
+    auto bottom_container = ftxui::Container::Horizontal(bottom_action_buttons_);
+    auto bottom_renderer = ftxui::Renderer(bottom_container, [this] {
+        auto dims = ftxui::Terminal::Size();
+        int bottom_h = std::max(3, dims.dimy / 10); // 底栏约 10%
+        std::vector<ftxui::Element> btns;
+        for (auto& b : bottom_action_buttons_) {
+            btns.push_back(b->Render());
+            btns.push_back(ftxui::text(" "));
+        }
+        auto help = ftxui::text("W/A/S/D 移动  空格 交互  T 工具菜单  Q/E 切换队友");
+        auto bar = ftxui::hbox({ ftxui::hbox(btns), ftxui::filler(), help }) | ftxui::border;
+        return bar | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, bottom_h);
+    });
+
+    // 主组件（顶栏 / 中部 / 底部）
+    component_ = ftxui::Container::Vertical({ header_renderer, main_renderer, bottom_renderer });
+
+    // 将工具菜单以叠加层形式集成
     std::vector<ftxui::Component> final_components;
     final_components.push_back(component_);
-    
-    // 添加工具菜单作为条件组件
     auto tool_menu_component = ftxui::Renderer([this] {
         if (show_tool_overlay_) {
             std::vector<ftxui::Element> elements;
             elements.push_back(ftxui::text("=== 工具菜单 ===") | ftxui::bold | ftxui::center);
             elements.push_back(ftxui::separator());
-            
             for (size_t i = 0; i < tool_options_.size(); ++i) {
                 auto text = tool_options_[i];
                 if (i == selected_tool_button_) {
@@ -153,16 +190,12 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
                     elements.push_back(ftxui::text(text));
                 }
             }
-            
             elements.push_back(ftxui::separator());
             elements.push_back(ftxui::text("按 Enter 选择，ESC 取消"));
-            
             return ftxui::vbox(elements) | ftxui::border | ftxui::center;
-        } else {
-            return ftxui::text("");
         }
+        return ftxui::text("");
     });
-    
     final_components.push_back(tool_menu_component);
     component_ = ftxui::Container::Vertical(final_components);
     
@@ -223,6 +256,8 @@ void GameplayScreen::UpdatePlayerInfo(const Player& player) {
     auto active = player.getActiveMember();
     player_hp_ = active ? active->getCurrentHealth() : 0;
     player_max_hp_ = active ? active->getTotalHealth() : 0;
+    player_level_ = player.level;
+    player_experience_ = player.experience;
     
     std::stringstream ss;
     ss << "等级: " << player.level << " 经验: " << player.experience;

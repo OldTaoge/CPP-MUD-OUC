@@ -50,6 +50,7 @@ private:
     ftxui::Component tool_button_;
     ftxui::Component close_button_;  // 关闭按钮
     std::vector<ftxui::Component> tool_option_buttons_;  // 工具选项按钮
+    std::vector<ftxui::Component> bottom_action_buttons_; // 底部操作按钮（鼠标点击）
     
     // 数据存储
     std::vector<std::string> chat_messages_;
@@ -60,6 +61,8 @@ private:
     std::string player_name_;
     int player_hp_;
     int player_max_hp_;
+    int player_level_;
+    int player_experience_;
     std::string player_status_;
     std::vector<std::string> team_members_;
     

@@ -54,8 +54,7 @@ private:
     
     std::vector<MemberDisplayInfo> member_info_;
     int selected_member_ = 0;
-    bool show_add_member_dialog_ = false;
-    
+
     // 游戏对象引用
     Game* game_;
     

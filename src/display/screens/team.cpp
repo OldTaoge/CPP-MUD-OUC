@@ -15,11 +15,6 @@ TeamScreen::TeamScreen(Game* game) : game_(game) {
     // 创建输入组件
     new_member_name_input_ = ftxui::Input(&new_member_name_buffer_, "输入新成员姓名...");
     
-    // 创建添加成员按钮
-    add_member_button_ = ftxui::Button("添加队友", [this] {
-        show_add_member_dialog_ = !show_add_member_dialog_;
-    });
-    
     // 创建返回按钮
     back_button_ = ftxui::Button("返回游戏", [this] {
         if (navigation_callback_) {
@@ -51,9 +46,7 @@ TeamScreen::TeamScreen(Game* game) : game_(game) {
         if (member_info_.empty()) {
             elements.push_back(ftxui::text("暂无队伍成员") | ftxui::color(ftxui::Color::Red));
         } else {
-            for (size_t i = 0; i < member_info_.size(); ++i) {
-                const auto& member = member_info_[i];
-                
+            for (const auto & member : member_info_) {
                 std::vector<ftxui::Element> member_row;
                 
                 // 成员基本信息
@@ -119,18 +112,10 @@ TeamScreen::TeamScreen(Game* game) : game_(game) {
             }
         }
         
-        // 添加成员对话框
-        if (show_add_member_dialog_) {
-            elements.push_back(ftxui::separator());
-            elements.push_back(ftxui::text("添加新队友:") | ftxui::bold);
-            elements.push_back(ftxui::hbox({ftxui::text("姓名: "), new_member_name_input_->Render()}));
-            elements.push_back(ftxui::text("[Enter] 确认添加  [ESC] 取消"));
-        }
-        
         // 操作说明
         elements.push_back(ftxui::separator());
         elements.push_back(ftxui::text("操作说明:") | ftxui::bold);
-        elements.push_back(ftxui::text("↑↓ 选择成员  [A] 添加队友  [B] 返回游戏"));
+        elements.push_back(ftxui::text("↑↓ 选择成员  [B] 返回游戏"));
         elements.push_back(ftxui::text("数字键进行对应操作"));
         
         return ftxui::vbox(elements) | ftxui::border;
@@ -138,26 +123,11 @@ TeamScreen::TeamScreen(Game* game) : game_(game) {
     
     // 添加键盘事件处理
     component_ |= ftxui::CatchEvent([this](ftxui::Event event) {
-        if (show_add_member_dialog_) {
-            if (event == ftxui::Event::Return) {
-                HandleAddMember();
-                return true;
-            } else if (event == ftxui::Event::Escape) {
-                show_add_member_dialog_ = false;
-                new_member_name_buffer_.clear();
-                return true;
-            }
-            // 让输入组件处理其他事件
-            return new_member_name_input_->OnEvent(event);
-        } else {
             if (event == ftxui::Event::ArrowUp) {
                 selected_member_ = std::max(0, selected_member_ - 1);
                 return true;
             } else if (event == ftxui::Event::ArrowDown) {
                 selected_member_ = std::min((int)member_info_.size() - 1, selected_member_ + 1);
-                return true;
-            } else if (event == ftxui::Event::Character('a') || event == ftxui::Event::Character('A')) {
-                show_add_member_dialog_ = true;
                 return true;
             } else if (event == ftxui::Event::Character('b') || event == ftxui::Event::Character('B')) {
                 if (navigation_callback_) {
@@ -174,7 +144,6 @@ TeamScreen::TeamScreen(Game* game) : game_(game) {
                 HandleEquipMember(selected_member_);
                 return true;
             }
-        }
         return false;
     });
 }
@@ -289,8 +258,7 @@ void TeamScreen::HandleAddMember() {
     
     status_message_ = "成功添加队友: " + new_member_name_buffer_;
     new_member_name_buffer_.clear();
-    show_add_member_dialog_ = false;
-    
+
     RefreshTeamData();
 }
 

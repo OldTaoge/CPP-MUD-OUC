@@ -15,6 +15,10 @@ void Game::StartNewGame() {
 }
 
 void Game::LoadGame() {
+    LoadGameWithMapState();
+}
+
+void Game::LoadGameWithMapState() {
     std::cout << "正在加载游戏..." << std::endl;
     
     // 检查是否有存档文件
@@ -27,11 +31,17 @@ void Game::LoadGame() {
     
     // 使用第一个存档文件（可以后续扩展为让用户选择）
     std::string saveFile = saveFiles[0];
-    SaveResult result = gameSave_.loadGame(player_, saveFile);
+    int currentBlockId = 0;
+    SaveResult result = gameSave_.loadGame(player_, currentBlockId, saveFile);
     
     if (result == SaveResult::SUCCESS) {
         std::cout << "游戏加载成功！" << std::endl;
+        
+        // 初始化地图系统到保存的区块
+        mapManager_.switchToBlock(currentBlockId, player_.x, player_.y);
+        
         currentState_ = GameState::PLAYING;
+        std::cout << "地图状态已恢复到区块 " << currentBlockId << "，位置 (" << player_.x << ", " << player_.y << ")" << std::endl;
     } else {
         std::cout << "游戏加载失败，错误代码: " << static_cast<int>(result) << std::endl;
         std::cout << "将开始新游戏。" << std::endl;
@@ -40,11 +50,18 @@ void Game::LoadGame() {
 }
 
 void Game::SaveGame() {
+    SaveGameWithMapState();
+}
+
+void Game::SaveGameWithMapState() {
     std::cout << "正在保存游戏..." << std::endl;
     
-    SaveResult result = gameSave_.saveGame(player_, "autosave.json");
+    // 获取当前地图状态
+    int currentBlockId = mapManager_.getCurrentBlockId();
+    
+    SaveResult result = gameSave_.saveGame(player_, currentBlockId, "autosave.json");
     if (result == SaveResult::SUCCESS) {
-        std::cout << "游戏保存成功！" << std::endl;
+        std::cout << "游戏保存成功！当前区块: " << currentBlockId << std::endl;
     } else {
         std::cout << "游戏保存失败，错误代码: " << static_cast<int>(result) << std::endl;
     }
@@ -112,25 +129,21 @@ void Game::levelUp() {
 
 void Game::setupInitialInventory() {
     // 添加一些初始物品
-    player_.addItemToInventory(ItemFactory::createWeapon("新手剑", WeaponType::ONE_HANDED_SWORD, Rarity::ONE_STAR));
-    player_.addItemToInventory(ItemFactory::createWeapon("精钢剑", WeaponType::ONE_HANDED_SWORD, Rarity::THREE_STAR));
-    player_.addItemToInventory(ItemFactory::createArtifact("冒险家尾羽", ArtifactType::PLUME_OF_DEATH, Rarity::THREE_STAR));
-    player_.addItemToInventory(ItemFactory::createFood("苹果", FoodType::RECOVERY, Rarity::ONE_STAR));
-    player_.addItemToInventory(ItemFactory::createFood("辣椒", FoodType::ATTACK, Rarity::TWO_STAR));
-    player_.addItemToInventory(ItemFactory::createMaterial("史莱姆凝液", MaterialType::MONSTER_DROP, Rarity::ONE_STAR));
-    player_.addItemToInventory(ItemFactory::createMaterial("胡萝卜", MaterialType::COOKING_INGREDIENT, Rarity::ONE_STAR));
+    //player_.addItemToInventory(ItemFactory::createWeapon("新手剑", WeaponType::ONE_HANDED_SWORD, Rarity::ONE_STAR));
+    // player_.addItemToInventory(ItemFactory::createWeapon("精钢剑", WeaponType::ONE_HANDED_SWORD, Rarity::THREE_STAR));
+    // player_.addItemToInventory(ItemFactory::createArtifact("冒险家尾羽", ArtifactType::PLUME_OF_DEATH, Rarity::THREE_STAR));
+    // player_.addItemToInventory(ItemFactory::createFood("苹果", FoodType::RECOVERY, Rarity::ONE_STAR));
+    // player_.addItemToInventory(ItemFactory::createFood("辣椒", FoodType::ATTACK, Rarity::TWO_STAR));
+    // player_.addItemToInventory(ItemFactory::createMaterial("史莱姆凝液", MaterialType::MONSTER_DROP, Rarity::ONE_STAR));
+    // player_.addItemToInventory(ItemFactory::createMaterial("胡萝卜", MaterialType::COOKING_INGREDIENT, Rarity::ONE_STAR));
 }
 
 void Game::setupInitialTeam() {
-    // 添加初始队伍成员 - 旅行者
-    player_.addTeamMember("旅行者", 1);
+    // Player构造函数已经添加了"旅行者"作为初始成员
+    // 这里为初始成员装备武器和设置状态
     
-    // 添加一些初始队友供测试
-    player_.addTeamMember("芭芭拉", 1);
-    player_.addTeamMember("安柏", 1);
-    
-    // 为第一个队伍成员装备初始武器
     if (!player_.teamMembers.empty()) {
+        // 为第一个队伍成员装备初始武器
         auto sword = ItemFactory::createWeapon("新手剑", WeaponType::ONE_HANDED_SWORD, Rarity::ONE_STAR);
         if (sword) {
             auto weapon = std::dynamic_pointer_cast<Weapon>(sword);
@@ -138,6 +151,10 @@ void Game::setupInitialTeam() {
                 player_.teamMembers[0]->equipWeapon(weapon);
             }
         }
+        
+        // 确保第一个成员是活跃状态
+        player_.teamMembers[0]->setStatus(MemberStatus::ACTIVE);
+        player_.activeMember = player_.teamMembers[0];
     }
 }
 

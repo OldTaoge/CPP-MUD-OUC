@@ -28,6 +28,12 @@ public:
     void UpdateGameStatus(const std::string& status);
     void UpdateTeamStatus(const std::vector<std::string>& teamMembers);
     void UpdateMapDisplay();
+    
+    // 辅助方法：刷新队伍状态显示
+    void RefreshTeamDisplay();
+    
+    // 清空游戏消息和聊天消息
+    void ClearAllMessages();
 
 private:
     void HandleToolButton(int buttonIndex);

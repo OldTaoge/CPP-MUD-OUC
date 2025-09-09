@@ -26,9 +26,11 @@ public:
 
     // 保存游戏状态
     SaveResult saveGame(const Player& player, const std::string& saveFileName = "save.json");
+    SaveResult saveGame(const Player& player, int currentBlockId, const std::string& saveFileName = "save.json");
     
     // 加载游戏状态
     SaveResult loadGame(Player& player, const std::string& saveFileName = "save.json");
+    SaveResult loadGame(Player& player, int& currentBlockId, const std::string& saveFileName = "save.json");
     
     // 检查存档是否存在
     bool saveExists(const std::string& saveFileName = "save.json") const;
@@ -86,4 +88,8 @@ private:
     
     std::string rarityToString(Rarity rarity) const;
     Rarity stringToRarity(const std::string& str) const;
+
+    // 队伍成员状态转换
+    std::string memberStatusToString(MemberStatus status) const;
+    MemberStatus stringToMemberStatus(const std::string& str) const;
 };

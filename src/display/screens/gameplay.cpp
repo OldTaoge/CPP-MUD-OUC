@@ -220,8 +220,9 @@ ftxui::Component GameplayScreen::GetComponent() {
 
 void GameplayScreen::UpdatePlayerInfo(const Player& player) {
     player_name_ = player.name;
-    player_hp_ = player.teamMembers.empty() ? 0 : player.teamMembers[0]->getCurrentHealth();
-    player_max_hp_ = player.teamMembers.empty() ? 0 : player.teamMembers[0]->getTotalHealth();
+    auto active = player.getActiveMember();
+    player_hp_ = active ? active->getCurrentHealth() : 0;
+    player_max_hp_ = active ? active->getTotalHealth() : 0;
     
     std::stringstream ss;
     ss << "等级: " << player.level << " 经验: " << player.experience;
@@ -246,6 +247,27 @@ void GameplayScreen::UpdateGameStatus(const std::string& status) {
 
 void GameplayScreen::UpdateTeamStatus(const std::vector<std::string>& teamMembers) {
     team_members_ = teamMembers;
+}
+
+void GameplayScreen::RefreshTeamDisplay() {
+    if (!game_) return;
+    
+    std::vector<std::string> teamMemberNames;
+    const auto& player = game_->getPlayer();
+    for (const auto& member : player.teamMembers) {
+        if (member) {
+            std::string memberInfo = member->getName() + " (HP: " + 
+                                   std::to_string(member->getCurrentHealth()) + "/" + 
+                                   std::to_string(member->getTotalHealth()) + ")";
+            teamMemberNames.push_back(memberInfo);
+        }
+    }
+    UpdateTeamStatus(teamMemberNames);
+}
+
+void GameplayScreen::ClearAllMessages() {
+    game_messages_.clear();
+    chat_messages_.clear();
 }
 
 void GameplayScreen::UpdateMapDisplay() {
@@ -283,7 +305,7 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
     
     if (command == "move north") {
         if (game_->movePlayer(0, -1)) {
-            UpdateGameStatus("向北移动");
+            // UpdateGameStatus("向北移动");
             UpdatePlayerInfo(game_->getPlayer());
             UpdateMapDisplay();  // 实时更新地图
         } else {
@@ -291,7 +313,7 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
         }
     } else if (command == "move south") {
         if (game_->movePlayer(0, 1)) {
-            UpdateGameStatus("向南移动");
+            // UpdateGameStatus("向南移动");
             UpdatePlayerInfo(game_->getPlayer());
             UpdateMapDisplay();  // 实时更新地图
         } else {
@@ -299,7 +321,7 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
         }
     } else if (command == "move west") {
         if (game_->movePlayer(-1, 0)) {
-            UpdateGameStatus("向西移动");
+            // UpdateGameStatus("向西移动");
             UpdatePlayerInfo(game_->getPlayer());
             UpdateMapDisplay();  // 实时更新地图
         } else {
@@ -307,7 +329,7 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
         }
     } else if (command == "move east") {
         if (game_->movePlayer(1, 0)) {
-            UpdateGameStatus("向东移动");
+            // UpdateGameStatus("向东移动");
             UpdatePlayerInfo(game_->getPlayer());
             UpdateMapDisplay();  // 实时更新地图
         } else {
@@ -321,6 +343,9 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
             if (activeMember) {
                 UpdateGameStatus("切换到队友: " + activeMember->getName());
             }
+            
+            // 更新队伍状态显示
+            RefreshTeamDisplay();
         } else {
             UpdateGameStatus("无法切换队友");
         }
@@ -332,6 +357,9 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
             if (activeMember) {
                 UpdateGameStatus("切换到队友: " + activeMember->getName());
             }
+            
+            // 更新队伍状态显示
+            RefreshTeamDisplay();
         } else {
             UpdateGameStatus("无法切换队友");
         }
@@ -344,6 +372,9 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
             if (result.success) {
                 UpdatePlayerInfo(game_->getPlayer());
                 UpdateMapDisplay();  // 交互后更新地图
+                
+                // 更新队伍状态显示（重要：处理新角色加入的情况）
+                RefreshTeamDisplay();
             }
         } else {
             UpdateGameStatus("当前位置没有可交互的内容");

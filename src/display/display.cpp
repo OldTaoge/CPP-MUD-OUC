@@ -140,11 +140,36 @@ void ScreenManager::SwitchToScreen(const std::string& screenName) {
         }
     }
     
-    // 如果切换到游戏界面，更新游戏界面的地图显示
+    // 如果切换到游戏界面，更新游戏界面的显示信息
     if (screenName == "Gameplay" && screens_.count("Gameplay")) {
         GameplayScreen* gameplayScreen = dynamic_cast<GameplayScreen*>(screens_["Gameplay"]);
         if (gameplayScreen) {
             gameplayScreen->UpdateMapDisplay();
+            // 更新玩家信息显示
+            gameplayScreen->UpdatePlayerInfo(game_.getPlayer());
+            
+            // 更新队伍状态显示
+            gameplayScreen->RefreshTeamDisplay();
+            
+            // 根据游戏状态添加相应的欢迎消息
+            if (game_.getCurrentState() == GameState::PLAYING) {
+                // 检查是否是新游戏（通过检查玩家等级和经验判断）
+                const auto& player = game_.getPlayer();
+                if (player.level == 1 && player.experience == 0) {
+                    gameplayScreen->UpdateGameStatus("欢迎来到新的冒险！");
+                    gameplayScreen->UpdateGameStatus("使用 WASD 移动，空格键交互，T 打开工具菜单");
+                } else {
+                    gameplayScreen->UpdateGameStatus("游戏数据已加载完成");
+                }
+            }
+        }
+    }
+
+    // 如果切换到队伍界面，刷新队伍数据
+    if (screenName == "Team" && screens_.count("Team")) {
+        TeamScreen* teamScreen = dynamic_cast<TeamScreen*>(screens_["Team"]);
+        if (teamScreen) {
+            teamScreen->Refresh();
         }
     }
     
@@ -183,6 +208,15 @@ void ScreenManager::mainloop() {
 
 void ScreenManager::StartNewGame() {
     game_.StartNewGame();
+    
+    // 清空游戏界面的历史消息
+    if (screens_.count("Gameplay")) {
+        GameplayScreen* gameplayScreen = dynamic_cast<GameplayScreen*>(screens_["Gameplay"]);
+        if (gameplayScreen) {
+            gameplayScreen->ClearAllMessages();
+        }
+    }
+    
     // 切换到游戏界面
     nextScreen_ = "Gameplay";
     shouldSwitchScreen_ = true;
@@ -192,6 +226,14 @@ void ScreenManager::StartNewGame() {
 }
 
 void ScreenManager::LoadGame() {
+    // 清空游戏界面的历史消息
+    if (screens_.count("Gameplay")) {
+        GameplayScreen* gameplayScreen = dynamic_cast<GameplayScreen*>(screens_["Gameplay"]);
+        if (gameplayScreen) {
+            gameplayScreen->ClearAllMessages();
+        }
+    }
+    
     game_.LoadGame();
     // 切换到游戏界面
     nextScreen_ = "Gameplay";

@@ -17,6 +17,9 @@ public:
     // 实现基类的虚函数
     ftxui::Component GetComponent() override;
 
+    // 对外提供刷新方法（用于切换到该界面时同步最新队伍数据）
+    void Refresh();
+
 private:
     void RefreshTeamData();
     void HandleMemberToggle(int index);

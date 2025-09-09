@@ -40,6 +40,10 @@ public:
     bool saveExists(const std::string& saveFileName) const;
     bool deleteSave(const std::string& saveFileName) const;
     
+    // 带地图状态的保存和加载
+    void SaveGameWithMapState();
+    void LoadGameWithMapState();
+    
     // 游戏逻辑
     void updatePlayerPosition(int x, int y);
     void addExperience(int exp);

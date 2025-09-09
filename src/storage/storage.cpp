@@ -12,11 +12,18 @@ GameSave::GameSave() {
 }
 
 SaveResult GameSave::saveGame(const Player& player, const std::string& saveFileName) {
+    return saveGame(player, 0, saveFileName); // 默认区块ID为0
+}
+
+SaveResult GameSave::saveGame(const Player& player, int currentBlockId, const std::string& saveFileName) {
     try {
         nlohmann::json saveData;
         
         // 序列化玩家数据
         saveData["player"] = serializePlayer(player);
+        
+        // 保存地图状态
+        saveData["currentBlockId"] = currentBlockId;
         
         // 添加保存时间戳
         saveData["saveTime"] = getCurrentTimeString();
@@ -40,6 +47,11 @@ SaveResult GameSave::saveGame(const Player& player, const std::string& saveFileN
 }
 
 SaveResult GameSave::loadGame(Player& player, const std::string& saveFileName) {
+    int currentBlockId = 0; // 默认值
+    return loadGame(player, currentBlockId, saveFileName);
+}
+
+SaveResult GameSave::loadGame(Player& player, int& currentBlockId, const std::string& saveFileName) {
     try {
         std::string filePath = getSaveFilePath(saveFileName);
         std::ifstream file(filePath);
@@ -58,6 +70,9 @@ SaveResult GameSave::loadGame(Player& player, const std::string& saveFileName) {
         
         // 反序列化玩家数据
         deserializePlayer(player, saveData["player"]);
+        
+        // 加载地图状态
+        currentBlockId = saveData.value("currentBlockId", 0);
         
         return SaveResult::SUCCESS;
     } catch (const std::exception& e) {
@@ -177,6 +192,8 @@ nlohmann::json GameSave::serializeTeamMember(const TeamMember& member) const {
     memberJson["baseHealth"] = member.getBaseHealth();
     memberJson["baseAttack"] = member.getBaseAttack();
     memberJson["baseDefense"] = member.getBaseDefense();
+    // 保存队伍状态
+    memberJson["status"] = memberStatusToString(member.getStatus());
     
     // 装备的武器
     if (member.getEquippedWeapon()) {
@@ -284,8 +301,15 @@ void GameSave::deserializePlayer(Player& player, const nlohmann::json& json) con
     int activeIndex = json.value("activeMemberIndex", -1);
     if (activeIndex >= 0 && activeIndex < static_cast<int>(player.teamMembers.size())) {
         player.activeMember = player.teamMembers[activeIndex];
+        // 确保该成员标记为上场
+        if (player.activeMember && !player.activeMember->isActive()) {
+            player.activeMember->setStatus(MemberStatus::ACTIVE);
+        }
     } else if (!player.teamMembers.empty()) {
         player.activeMember = player.teamMembers[0];
+        if (player.activeMember && !player.activeMember->isActive()) {
+            player.activeMember->setStatus(MemberStatus::ACTIVE);
+        }
     }
     
     // 加载背包
@@ -324,6 +348,12 @@ std::shared_ptr<TeamMember> GameSave::deserializeTeamMember(const nlohmann::json
                     member->equipArtifact(artifactPtr);
                 }
             }
+        }
+        
+        // 加载队伍状态（默认为待命）
+        if (json.contains("status")) {
+            std::string statusStr = json.value("status", "STANDBY");
+            member->setStatus(stringToMemberStatus(statusStr));
         }
         
         return member;
@@ -534,4 +564,24 @@ Rarity GameSave::stringToRarity(const std::string& str) const {
     if (str == "FOUR_STAR") return Rarity::FOUR_STAR;
     if (str == "FIVE_STAR") return Rarity::FIVE_STAR;
     return Rarity::ONE_STAR;
+}
+
+// 队伍成员状态转换
+std::string GameSave::memberStatusToString(MemberStatus status) const {
+    switch (status) {
+        case MemberStatus::ACTIVE:
+            return "ACTIVE";
+        case MemberStatus::STANDBY:
+            return "STANDBY";
+        case MemberStatus::INJURED:
+            return "INJURED";
+        default:
+            return "STANDBY";
+    }
+}
+
+MemberStatus GameSave::stringToMemberStatus(const std::string& str) const {
+    if (str == "ACTIVE") return MemberStatus::ACTIVE;
+    if (str == "INJURED") return MemberStatus::INJURED;
+    return MemberStatus::STANDBY;
 }

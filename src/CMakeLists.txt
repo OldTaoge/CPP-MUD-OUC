@@ -52,3 +52,5 @@ target_link_libraries(CPP_MUD_OUC
         PRIVATE ftxui::dom
         PRIVATE ftxui::component
 )
+
+

@@ -183,6 +183,10 @@ ftxui::Component TeamScreen::GetComponent() {
     return component_;
 }
 
+void TeamScreen::Refresh() {
+    RefreshTeamData();
+}
+
 void TeamScreen::RefreshTeamData() {
     member_info_.clear();
     

@@ -18,6 +18,25 @@ void Game::LoadGame() {
     LoadGameWithMapState();
 }
 
+void Game::LoadGame(const std::string& saveFileName) {
+    std::cout << "正在加载游戏: " << saveFileName << std::endl;
+    
+    int currentBlockId = 0;
+    SaveResult result = gameSave_.loadGame(player_, currentBlockId, saveFileName);
+    
+    if (result == SaveResult::SUCCESS) {
+        std::cout << "游戏加载成功！" << std::endl;
+        
+        // 初始化地图系统到保存的区块
+        mapManager_.switchToBlock(currentBlockId, player_.x, player_.y);
+        
+        currentState_ = GameState::PLAYING;
+        std::cout << "地图状态已恢复到区块 " << currentBlockId << "，位置 (" << player_.x << ", " << player_.y << ")" << std::endl;
+    } else {
+        std::cout << "游戏加载失败，错误代码: " << static_cast<int>(result) << std::endl;
+    }
+}
+
 void Game::LoadGameWithMapState() {
     std::cout << "正在加载游戏..." << std::endl;
     
@@ -51,6 +70,20 @@ void Game::LoadGameWithMapState() {
 
 void Game::SaveGame() {
     SaveGameWithMapState();
+}
+
+void Game::SaveGame(const std::string& saveFileName) {
+    std::cout << "正在保存游戏: " << saveFileName << std::endl;
+    
+    // 获取当前地图状态
+    int currentBlockId = mapManager_.getCurrentBlockId();
+    
+    SaveResult result = gameSave_.saveGame(player_, currentBlockId, saveFileName);
+    if (result == SaveResult::SUCCESS) {
+        std::cout << "游戏保存成功！当前区块: " << currentBlockId << std::endl;
+    } else {
+        std::cout << "游戏保存失败，错误代码: " << static_cast<int>(result) << std::endl;
+    }
 }
 
 void Game::SaveGameWithMapState() {

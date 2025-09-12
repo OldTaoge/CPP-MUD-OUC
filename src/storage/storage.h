@@ -41,8 +41,8 @@ public:
         int level;
         int x, y;
         std::string saveTime;
-        size_t teamSize;
-        size_t inventorySize;
+        int teamSize;
+        int inventorySize;
     };
     
     SaveInfo getSaveInfo(const std::string& saveFileName = "save.json") const;

@@ -24,6 +24,8 @@ public:
     void StartNewGame();
     void LoadGame();
     void SaveGame();
+    void LoadGame(const std::string& saveFileName);
+    void SaveGame(const std::string& saveFileName);
     void InitializeNewPlayer();
     
     // 游戏状态查询

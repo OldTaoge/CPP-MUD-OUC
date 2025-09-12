@@ -103,11 +103,37 @@ GameSave::SaveInfo GameSave::getSaveInfo(const std::string& saveFileName) const 
         if (saveData.contains("player")) {
             const auto& playerData = saveData["player"];
             info.playerName = playerData.value("name", "");
-            info.level = playerData.value("level", 1);
-            info.x = playerData.value("x", 0);
-            info.y = playerData.value("y", 0);
-            info.teamSize = playerData.value("teamSize", 0);
-            info.inventorySize = playerData.value("inventorySize", 0);
+            
+            // 安全地获取数值，添加类型检查
+            if (playerData.contains("level") && playerData["level"].is_number()) {
+                info.level = playerData["level"].get<int>();
+            } else {
+                info.level = 1;
+            }
+            
+            if (playerData.contains("x") && playerData["x"].is_number()) {
+                info.x = playerData["x"].get<int>();
+            } else {
+                info.x = 0;
+            }
+            
+            if (playerData.contains("y") && playerData["y"].is_number()) {
+                info.y = playerData["y"].get<int>();
+            } else {
+                info.y = 0;
+            }
+            
+            if (playerData.contains("teamSize") && playerData["teamSize"].is_number()) {
+                info.teamSize = playerData["teamSize"].get<int>();
+            } else {
+                info.teamSize = 0;
+            }
+            
+            if (playerData.contains("inventorySize") && playerData["inventorySize"].is_number()) {
+                info.inventorySize = playerData["inventorySize"].get<int>();
+            } else {
+                info.inventorySize = 0;
+            }
         }
         
         info.saveTime = saveData.value("saveTime", "");
@@ -164,7 +190,7 @@ nlohmann::json GameSave::serializePlayer(const Player& player) const {
         teamArray.push_back(serializeTeamMember(*member));
     }
     playerJson["teamMembers"] = teamArray;
-    playerJson["teamSize"] = player.teamMembers.size();
+    playerJson["teamSize"] = static_cast<int>(player.teamMembers.size());
     
     // 当前活跃成员索引
     int activeIndex = -1;
@@ -178,7 +204,7 @@ nlohmann::json GameSave::serializePlayer(const Player& player) const {
     
     // 背包
     playerJson["inventory"] = serializeInventory(player.inventory);
-    playerJson["inventorySize"] = player.inventory.getCurrentSize();
+    playerJson["inventorySize"] = static_cast<int>(player.inventory.getCurrentSize());
     
     return playerJson;
 }

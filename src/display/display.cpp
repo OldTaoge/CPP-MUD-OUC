@@ -13,6 +13,7 @@
 #include "screens/gameplay.hpp"
 #include "screens/map.hpp"
 #include "screens/team.hpp"
+#include "screens/save_select.hpp"
 
 using namespace ftxui;
 
@@ -57,6 +58,14 @@ ScreenManager::ScreenManager()
     screens_["Team"] = new TeamScreen(&game_);
     screens_["Team"]->SetNavigationCallback(nav_callback);
 
+    // 创建存档选择屏幕实例（加载模式）
+    screens_["SaveLoad"] = new SaveSelectScreen(&game_, SaveSelectMode::LOAD);
+    screens_["SaveLoad"]->SetNavigationCallback(nav_callback);
+
+    // 创建存档选择屏幕实例（保存模式）
+    screens_["SaveSave"] = new SaveSelectScreen(&game_, SaveSelectMode::SAVE);
+    screens_["SaveSave"]->SetNavigationCallback(nav_callback);
+
     // 创建第一个屏幕实例
     CreateNewScreen();
 }
@@ -89,10 +98,18 @@ void ScreenManager::HandleNavigationRequest(const NavigationRequest& request) {
             StartNewGame();
             break;
         case NavigationAction::LOAD_GAME:
-            LoadGame();
+            nextScreen_ = "SaveLoad";
+            shouldSwitchScreen_ = true;
+            if (screen_) {
+                screen_->Exit();
+            }
             break;
         case NavigationAction::SAVE_GAME:
-            SaveGame();
+            nextScreen_ = "SaveSave";
+            shouldSwitchScreen_ = true;
+            if (screen_) {
+                screen_->Exit();
+            }
             break;
         case NavigationAction::QUIT_GAME:
             shouldQuit_ = true;
@@ -170,6 +187,14 @@ void ScreenManager::SwitchToScreen(const std::string& screenName) {
         TeamScreen* teamScreen = dynamic_cast<TeamScreen*>(screens_["Team"]);
         if (teamScreen) {
             teamScreen->Refresh();
+        }
+    }
+    
+    // 如果切换到存档选择界面，刷新存档列表
+    if ((screenName == "SaveLoad" || screenName == "SaveSave") && screens_.count(screenName)) {
+        SaveSelectScreen* saveScreen = dynamic_cast<SaveSelectScreen*>(screens_[screenName]);
+        if (saveScreen) {
+            saveScreen->RefreshSaveList();
         }
     }
     

@@ -40,6 +40,8 @@ add_executable(CPP_MUD_OUC core/main.cpp
         display/screens/map.hpp
         display/screens/team.cpp
         display/screens/team.hpp
+        display/screens/save_select.cpp
+        display/screens/save_select.hpp
         utils/utils.cpp
         utils/utils.hpp)
 

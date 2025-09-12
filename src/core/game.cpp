@@ -77,6 +77,8 @@ void Game::SaveGame(const std::string& saveFileName) {
     
     // 获取当前地图状态
     int currentBlockId = mapManager_.getCurrentBlockId();
+    std::cout << "当前区块ID: " << currentBlockId << std::endl;
+    std::cout << "玩家位置: (" << player_.x << ", " << player_.y << ")" << std::endl;
     
     SaveResult result = gameSave_.saveGame(player_, currentBlockId, saveFileName);
     if (result == SaveResult::SUCCESS) {
@@ -111,7 +113,16 @@ void Game::InitializeNewPlayer() {
     setupInitialInventory();
     
     // 初始化地图系统 - 从第一个区块开始
-    mapManager_.switchToBlock(0, 4, 4);
+    std::cout << "初始化地图系统..." << std::endl;
+    bool switchResult = mapManager_.switchToBlock(0, 4, 4);
+    std::cout << "地图切换结果: " << (switchResult ? "成功" : "失败") << std::endl;
+    std::cout << "当前区块ID: " << mapManager_.getCurrentBlockId() << std::endl;
+    
+    // 同步玩家位置到地图管理器
+    auto pos = mapManager_.getPlayerPosition();
+    player_.x = pos.first;
+    player_.y = pos.second;
+    std::cout << "玩家位置同步: (" << player_.x << ", " << player_.y << ")" << std::endl;
     
     std::cout << "新游戏初始化完成！" << std::endl;
 }

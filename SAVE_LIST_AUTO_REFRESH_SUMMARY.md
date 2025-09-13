@@ -151,3 +151,5 @@ if ((screenName == "SaveLoad" || screenName == "SaveSave") && screens_.count(scr
 - ✅ **架构一致**：与现有页面刷新机制保持一致
 - ✅ **性能优化**：按需刷新，不影响其他功能
 - ✅ **扩展性强**：为未来功能扩展奠定基础
+
+

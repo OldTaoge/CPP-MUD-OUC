@@ -102,18 +102,50 @@ std::vector<InteractionType> MapBlock::getAvailableInteractions(int x, int y) co
 std::vector<std::string> MapBlock::render() const {
     std::vector<std::string> result;
     
+    // 直接渲染地图网格 - 使用等宽ASCII字符（区块名称将在标题栏显示）
+    result.push_back("+---+---+---+---+---+");
     for (int y = 0; y < BLOCK_SIZE; ++y) {
-        std::string line;
+        std::string line = "|";
         for (int x = 0; x < BLOCK_SIZE; ++x) {
             if (x == playerX_ && y == playerY_) {
-                line += "P";  // 玩家位置
+                line += " P ";  // 玩家位置 - 使用等宽字符
             } else {
-                line += getCell(x, y).symbol;
+                // 根据地形类型使用不同的等宽符号
+                const MapCell& cell = getCell(x, y);
+                switch (cell.type) {
+                    case CellType::EMPTY: line += " . "; break;
+                    case CellType::WALL: line += " # "; break;
+                    case CellType::ITEM: line += " I "; break;
+                    case CellType::NPC: line += " N "; break;
+                    case CellType::STATUE: line += " S "; break;
+                    case CellType::MONSTER: line += " M "; break;
+                    case CellType::EXIT_NORTH: line += " ^ "; break;
+                    case CellType::EXIT_SOUTH: line += " v "; break;
+                    case CellType::EXIT_EAST: line += " > "; break;
+                    case CellType::EXIT_WEST: line += " < "; break;
+                    default: line += " ? "; break;
+                }
             }
-            line += " ";
+            line += "|";
         }
         result.push_back(line);
+        if (y < BLOCK_SIZE - 1) {
+            result.push_back("+---+---+---+---+---+");
+        }
     }
+    result.push_back("+---+---+---+---+---+");
+    
+    // 添加图例说明 - 包含高亮提示
+    result.push_back("");
+    result.push_back("=== 地图图例 ===");
+    result.push_back("P = 玩家位置 (黄色高亮)");
+    result.push_back("I = 物品/宝箱 (绿色高亮) - 可拾取");
+    result.push_back("N = NPC角色 (蓝色高亮) - 可对话");
+    result.push_back("S = 七天神像 (金色高亮) - 可激活");
+    result.push_back("M = 怪物敌人 (红色高亮) - 可战斗");
+    result.push_back("^v>< = 区域出口 (紫色高亮) - 可传送");
+    result.push_back("# = 墙壁障碍 (灰色)");
+    result.push_back(". = 空地 (白色)");
     
     return result;
 }
@@ -127,17 +159,20 @@ std::string MapBlock::getCurrentCellInfo() const {
     ss << "地形: " << cell.description << "\n";
     
     if (!cell.interactions.empty()) {
-        ss << "可交互: ";
+        ss << "可交互操作: ";
         for (size_t i = 0; i < cell.interactions.size(); ++i) {
             if (i > 0) ss << ", ";
             switch (cell.interactions[i]) {
-                case InteractionType::PICKUP: ss << "拾取"; break;
-                case InteractionType::BATTLE: ss << "战斗"; break;
-                case InteractionType::DIALOGUE: ss << "对话"; break;
-                case InteractionType::ACTIVATE: ss << "激活"; break;
-                case InteractionType::ENTER: ss << "进入"; break;
+                case InteractionType::PICKUP: ss << "[拾取]"; break;
+                case InteractionType::BATTLE: ss << "[战斗]"; break;
+                case InteractionType::DIALOGUE: ss << "[对话]"; break;
+                case InteractionType::ACTIVATE: ss << "[激活]"; break;
+                case InteractionType::ENTER: ss << "[进入]"; break;
             }
         }
+        ss << "\n按空格键进行交互";
+    } else {
+        ss << "无交互选项";
     }
     
     return ss.str();

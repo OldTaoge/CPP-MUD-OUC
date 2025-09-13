@@ -156,3 +156,5 @@ if (playerData.contains("inventorySize") && playerData["inventorySize"].is_numbe
 ## 总结
 
 这个修复解决了存档信息显示异常的问题，通过统一数据类型、改进序列化/反序列化方法和增强错误处理，确保了存档系统的稳定性和可靠性。修复后的系统能够正确显示存档信息，提供更好的用户体验。
+
+

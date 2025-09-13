@@ -81,18 +81,22 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     auto header_renderer = ftxui::Renderer(header_container, [this] {
         auto dims = ftxui::Terminal::Size();
         int header_h = std::max(3, dims.dimy / 10); // 顶栏约 10%
+        
+        // 右侧状态信息 - 使用更美观的显示
         std::string right_status = "Lv." + std::to_string(player_level_) +
-                                   "  HP: " + std::to_string(player_hp_) + "/" + std::to_string(player_max_hp_);
+                                   "  HP:" + std::to_string(player_hp_) + "/" + std::to_string(player_max_hp_);
+        
         auto left = tool_button_->Render();
-        auto center_title = ftxui::text("原神MUD版") | ftxui::bold;
-        auto right = ftxui::text(right_status);
+        auto center_title = ftxui::text("原神MUD版") | ftxui::bold | ftxui::color(ftxui::Color::Yellow);
+        auto right = ftxui::text(right_status) | ftxui::color(ftxui::Color::Cyan);
+        
         auto bar = ftxui::hbox({
                    left,
                    ftxui::filler(),
                    center_title,
                    ftxui::filler(),
                    right,
-               }) | ftxui::border;
+               }) | ftxui::border | ftxui::color(ftxui::Color::Blue);
         return bar | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, header_h);
     });
 
@@ -104,49 +108,169 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         int main_h = std::max(5, dims.dimy - header_h - bottom_h);
         int message_h = std::max(5, main_h * 6 / 10); // 为消息预留约 60% 的高度
 
-        // 左侧：地图显示
+        // 左侧：地图显示 - 优化美观度
         std::vector<ftxui::Element> left;
-        left.push_back(ftxui::text("当前区域") | ftxui::bold);
+        
+        // 地图标题 - 显示当前区块名称
+        std::string currentBlockName = "未知区域";
+        auto currentBlock = game_->getMapManager().getCurrentBlock();
+        if (currentBlock) {
+            currentBlockName = currentBlock->getName();
+        }
+        left.push_back(ftxui::text("[地图] " + currentBlockName) | ftxui::bold | ftxui::color(ftxui::Color::Cyan));
         left.push_back(ftxui::separator());
-        for (const auto& line : current_map_lines_) left.push_back(ftxui::text(line));
+        
+        // 地图内容 - 使用等宽字体和颜色，为交互元素添加精确的单位置高亮
+        std::vector<ftxui::Element> map_content;
+        for (const auto& line : current_map_lines_) {
+            // 检查是否为地图网格区域（包含边框字符的行，但不是图例或标题）
+            bool isMapGrid = (line.find("+") != std::string::npos || line.find("-") != std::string::npos || 
+                             line.find("|") != std::string::npos) && 
+                             line.find("=== 地图图例 ===") == std::string::npos && 
+                             line.find("P =") == std::string::npos && line.find("I =") == std::string::npos && 
+                             line.find("N =") == std::string::npos && line.find("S =") == std::string::npos && 
+                             line.find("M =") == std::string::npos && line.find("^v>< =") == std::string::npos && 
+                             line.find("# =") == std::string::npos && line.find(". =") == std::string::npos &&
+                             line.length() > 5; // 确保不是简短的标题行，但允许区块名称显示
+            
+            if (isMapGrid) {
+                // 地图网格区域 - 为每个字符位置单独应用样式
+                std::vector<ftxui::Element> styled_chars;
+                for (size_t i = 0; i < line.length(); ++i) {
+                    char c = line[i];
+                    ftxui::Element char_element = ftxui::text(std::string(1, c));
+                    
+                    // 根据字符类型应用不同的样式，确保良好的对比度和可读性
+                    if (c == '+' || c == '-' || c == '|') {
+                        // 边框字符 - 青色
+                        char_element = char_element | ftxui::color(ftxui::Color::Cyan) | ftxui::bold;
+                    } else if (c == 'P') {
+                        // 玩家位置 - 白色文字配深蓝色背景
+                        char_element = char_element | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Blue) | ftxui::bold;
+                    } else if (c == 'I') {
+                        // 物品 - 白色文字配深绿色背景
+                        char_element = char_element | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Green) | ftxui::bold;
+                    } else if (c == 'N') {
+                        // NPC - 白色文字配深青色背景
+                        char_element = char_element | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Cyan) | ftxui::bold;
+                    } else if (c == 'S') {
+                        // 神像 - 黑色文字配黄色背景
+                        char_element = char_element | ftxui::color(ftxui::Color::Black) | ftxui::bgcolor(ftxui::Color::Yellow) | ftxui::bold;
+                    } else if (c == 'M') {
+                        // 怪物 - 白色文字配红色背景
+                        char_element = char_element | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Red) | ftxui::bold;
+                    } else if (c == '^' || c == 'v' || c == '>' || c == '<') {
+                        // 出口 - 白色文字配紫色背景
+                        char_element = char_element | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Magenta) | ftxui::bold;
+                    } else if (c == '#') {
+                        // 墙壁 - 灰色
+                        char_element = char_element | ftxui::color(ftxui::Color::GrayLight) | ftxui::bold;
+                    } else if (c == '.') {
+                        // 空地 - 白色
+                        char_element = char_element | ftxui::color(ftxui::Color::White);
+                    } else {
+                        // 其他字符 - 青色
+                        char_element = char_element | ftxui::color(ftxui::Color::Cyan) | ftxui::bold;
+                    }
+                    
+                    styled_chars.push_back(char_element);
+                }
+                
+                // 将样式化的字符组合成一行
+                auto styled_line = ftxui::hbox(styled_chars);
+                map_content.push_back(styled_line);
+            } else if (line.find("=== 地图图例 ===") != std::string::npos) {
+                // 图例标题 - 使用黄色
+                auto styled_line = ftxui::text(line) | ftxui::color(ftxui::Color::Yellow) | ftxui::bold;
+                map_content.push_back(styled_line);
+            } else if (line.find("P =") != std::string::npos || line.find("I =") != std::string::npos || 
+                      line.find("N =") != std::string::npos || line.find("S =") != std::string::npos || 
+                      line.find("M =") != std::string::npos || line.find("^v>< =") != std::string::npos || 
+                      line.find("# =") != std::string::npos || line.find(". =") != std::string::npos) {
+                // 图例说明 - 使用普通颜色，不高亮
+                auto styled_line = ftxui::text(line) | ftxui::color(ftxui::Color::GrayLight);
+                map_content.push_back(styled_line);
+            } else {
+                // 其他内容 - 使用绿色
+                auto styled_line = ftxui::text(line) | ftxui::color(ftxui::Color::Green);
+                map_content.push_back(styled_line);
+            }
+        }
+        
+        // 将地图内容放在一个带边框的容器中
+        auto map_box = ftxui::vbox(map_content) | ftxui::border | ftxui::color(ftxui::Color::Green);
+        left.push_back(map_box);
+        
+        // 区块信息 - 使用更美观的样式
         if (!current_block_info_.empty()) {
             left.push_back(ftxui::separator());
-            left.push_back(ftxui::text(current_block_info_));
+            left.push_back(ftxui::text("[位置] 位置信息") | ftxui::bold | ftxui::color(ftxui::Color::Yellow));
+            left.push_back(ftxui::paragraph(current_block_info_) | ftxui::color(ftxui::Color::White));
         }
-        auto left_box = ftxui::vbox(left) | ftxui::border;
+        
+        auto left_box = ftxui::vbox(left) | ftxui::border | ftxui::color(ftxui::Color::Blue);
 
-        // 右侧：游戏消息（固定高度视口） + 游戏状态（玩家/队伍）
+        // 右侧：游戏消息（固定高度视口） + 游戏状态（玩家/队伍） - 优化美观度
         std::vector<ftxui::Element> right;
-        right.push_back(ftxui::text("游戏消息") | ftxui::bold);
+        
+        // 游戏消息区域
+        right.push_back(ftxui::text("[消息] 游戏消息") | ftxui::bold | ftxui::color(ftxui::Color::Magenta));
         right.push_back(ftxui::separator());
         std::vector<ftxui::Element> msg_lines;
         if (game_messages_.empty()) {
             msg_lines.push_back(ftxui::text("暂无消息") | ftxui::color(ftxui::Color::GrayLight));
         } else {
-            for (const auto& m : game_messages_) msg_lines.push_back(ftxui::text(m));
+            for (const auto& m : game_messages_) {
+                // 为不同类型的消息添加不同颜色
+                auto styled_msg = ftxui::paragraph(m);
+                if (m.find("胜利") != std::string::npos || m.find("成功") != std::string::npos) {
+                    styled_msg = styled_msg | ftxui::color(ftxui::Color::Green);
+                } else if (m.find("失败") != std::string::npos || m.find("错误") != std::string::npos) {
+                    styled_msg = styled_msg | ftxui::color(ftxui::Color::Red);
+                } else if (m.find("获得") != std::string::npos || m.find("奖励") != std::string::npos) {
+                    styled_msg = styled_msg | ftxui::color(ftxui::Color::Yellow);
+                } else {
+                    styled_msg = styled_msg | ftxui::color(ftxui::Color::White);
+                }
+                msg_lines.push_back(styled_msg);
+            }
         }
         auto messages_view = ftxui::vbox(msg_lines) | ftxui::vscroll_indicator | ftxui::yframe |
                              ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, message_h);
         right.push_back(messages_view);
+        
+        // 游戏状态区域
         right.push_back(ftxui::separator());
-        right.push_back(ftxui::text("游戏状态") | ftxui::bold);
+        right.push_back(ftxui::text("[状态] 游戏状态") | ftxui::bold | ftxui::color(ftxui::Color::Cyan));
         right.push_back(ftxui::separator());
-        right.push_back(ftxui::text("玩家: " + player_name_));
-        right.push_back(ftxui::text("Lv." + std::to_string(player_level_)));
-        right.push_back(ftxui::text("HP: " + std::to_string(player_hp_) + "/" + std::to_string(player_max_hp_)));
-        right.push_back(ftxui::text(player_status_));
+        
+        // 玩家信息 - 使用更美观的显示
+        right.push_back(ftxui::paragraph("玩家: " + player_name_) | ftxui::color(ftxui::Color::White));
+        right.push_back(ftxui::paragraph("等级: Lv." + std::to_string(player_level_)) | ftxui::color(ftxui::Color::Yellow));
+        
+        // HP显示 - 使用颜色表示血量状态
+        auto hp_color = (player_hp_ > player_max_hp_ * 0.5) ? ftxui::Color::Green : 
+                       (player_hp_ > player_max_hp_ * 0.25) ? ftxui::Color::Yellow : ftxui::Color::Red;
+        right.push_back(ftxui::paragraph("HP: " + std::to_string(player_hp_) + "/" + std::to_string(player_max_hp_)) | ftxui::color(hp_color));
+        right.push_back(ftxui::paragraph(player_status_) | ftxui::color(ftxui::Color::GrayLight));
+        
+        // 队伍成员区域
         right.push_back(ftxui::separator());
-        right.push_back(ftxui::text("队伍成员:") | ftxui::bold)
-        ;
+        right.push_back(ftxui::text("[队伍] 队伍成员") | ftxui::bold | ftxui::color(ftxui::Color::Blue));
+        right.push_back(ftxui::separator());
         if (team_members_.empty()) {
             right.push_back(ftxui::text("暂无队伍成员") | ftxui::color(ftxui::Color::GrayLight));
         } else {
-            for (const auto& member : team_members_) right.push_back(ftxui::text("• " + member));
+            for (const auto& member : team_members_) {
+                // 为队伍成员添加颜色
+                right.push_back(ftxui::paragraph("* " + member) | ftxui::color(ftxui::Color::White));
+            }
         }
-        auto right_box = ftxui::vbox(right) | ftxui::border;
+        
+        auto right_box = ftxui::vbox(right) | ftxui::border | ftxui::color(ftxui::Color::Magenta);
 
-        // 按 6:4 比例分配宽度
-        int left_w = std::max(20, dims.dimx * 6 / 10);
+        // 按 7:3 比例分配宽度
+        int left_w = std::max(20, dims.dimx * 7 / 10);
         int right_w = std::max(10, dims.dimx - left_w);
         auto left_sized = left_box | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, left_w);
         auto right_sized = right_box | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, right_w);
@@ -164,8 +288,13 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
             btns.push_back(b->Render());
             btns.push_back(ftxui::text(" "));
         }
-        auto help = ftxui::text("W/A/S/D 移动  空格 交互  T 工具菜单  Q/E 切换队友");
-        auto bar = ftxui::hbox({ ftxui::hbox(btns), ftxui::filler(), help }) | ftxui::border;
+        
+        // 操作提示 - 使用更美观的样式
+        auto help = ftxui::text("W/A/S/D 移动  空格 交互  T 工具菜单  Q/E 切换队友") | 
+                   ftxui::color(ftxui::Color::GrayLight);
+        
+        auto bar = ftxui::hbox({ ftxui::hbox(btns), ftxui::filler(), help }) | 
+                  ftxui::border | ftxui::color(ftxui::Color::Green);
         return bar | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, bottom_h);
     });
 
@@ -178,21 +307,27 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     auto tool_menu_component = ftxui::Renderer([this] {
         if (show_tool_overlay_) {
             std::vector<ftxui::Element> elements;
-            elements.push_back(ftxui::text("=== 工具菜单 ===") | ftxui::bold | ftxui::center);
+            
+            // 工具菜单标题 - 使用更美观的样式
+            elements.push_back(ftxui::text("=== 工具菜单 ===") | ftxui::bold | ftxui::center | ftxui::color(ftxui::Color::Cyan));
             elements.push_back(ftxui::separator());
+            
+            // 工具选项 - 添加更好的样式
             for (size_t i = 0; i < tool_options_.size(); ++i) {
                 auto text = tool_options_[i];
                 if (i == selected_tool_button_) {
                     text = "> " + text;
-                    elements.push_back(ftxui::text(text) | ftxui::color(ftxui::Color::Yellow));
+                    elements.push_back(ftxui::text(text) | ftxui::color(ftxui::Color::Yellow) | ftxui::bold);
                 } else {
                     text = "  " + text;
-                    elements.push_back(ftxui::text(text));
+                    elements.push_back(ftxui::text(text) | ftxui::color(ftxui::Color::White));
                 }
             }
+            
             elements.push_back(ftxui::separator());
-            elements.push_back(ftxui::text("按 Enter 选择，ESC 取消"));
-            return ftxui::vbox(elements) | ftxui::border | ftxui::center;
+            elements.push_back(ftxui::text("按 Enter 选择，ESC 取消") | ftxui::color(ftxui::Color::GrayLight) | ftxui::center);
+            
+            return ftxui::vbox(elements) | ftxui::border | ftxui::center | ftxui::color(ftxui::Color::Blue);
         }
         return ftxui::text("");
     });

@@ -20,12 +20,9 @@ InventoryResult Player::removeItemFromInventory(const std::string& itemName, int
 void Player::addTeamMember(const std::string& name, int level) {
     auto member = std::make_shared<TeamMember>(name, level);
     teamMembers.push_back(member);
-    
-    // 如果是第一个成员，自动设为上场状态
-    if (teamMembers.size() == 1) {
-        member->setStatus(MemberStatus::ACTIVE);
-        activeMember = member;
-    }
+    // 新成员加入队伍时，自动设为上场角色
+    member->setStatus(MemberStatus::ACTIVE);
+    activeMember = member;
 }
 
 void Player::setActiveMember(int index) {

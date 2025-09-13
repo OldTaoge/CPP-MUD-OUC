@@ -245,7 +245,9 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         right.push_back(ftxui::separator());
         
         // 玩家信息 - 使用更美观的显示
-        right.push_back(ftxui::paragraph("玩家: " + player_name_) | ftxui::color(ftxui::Color::White));
+        auto activeMember = game_->getPlayer().getActiveMember();
+        std::string activeName = activeMember ? activeMember->getName() : "无";
+        right.push_back(ftxui::paragraph("上场角色: " + activeName) | ftxui::color(ftxui::Color::White));
         right.push_back(ftxui::paragraph("等级: Lv." + std::to_string(player_level_)) | ftxui::color(ftxui::Color::Yellow));
         
         // HP显示 - 使用颜色表示血量状态

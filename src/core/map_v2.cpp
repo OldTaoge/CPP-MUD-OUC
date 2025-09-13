@@ -523,22 +523,13 @@ InteractionResult AmberDialogueBlock::handleDialogue(Player& player, int x, int 
     if (amberJoined_) {
         return InteractionResult(true, "安伯：很高兴能和你一起冒险！");
     }
-    
-    if (!dialogueCompleted_) {
-        dialogueCompleted_ = true;
-        return InteractionResult(true, 
-            "安伯：你好，旅行者！我是西风骑士团的侦察骑士安伯。\n"
-            "我听说你正在寻找失散的亲人，我很乐意帮助你！\n"
-            "让我加入你的队伍吧，我的弓箭技能会很有用的。\n"
-            "再次与我对话确认加入。");
-    }
-    
-    // 安伯加入队伍
+    // 第一次交互直接加入队伍
     amberJoined_ = true;
     player.addTeamMember("安伯", 20);
     state_ = BlockState::COMPLETED;
-    
-    return InteractionResult(true, 
+    return InteractionResult(true,
+        "安伯：你好，旅行者！我是西风骑士团的侦察骑士安伯。\n"
+        "我听说你正在寻找失散的亲人，我很乐意帮助你！\n"
         "安伯加入了你的队伍！\n"
         "她是一名优秀的弓箭手，擅长远程攻击。\n"
         "现在你的队伍更加强大了！", {}, true);

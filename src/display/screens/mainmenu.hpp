@@ -16,7 +16,7 @@ public:
 
 private:
     void HandleSelection(int selected_option);
-    
+
     ftxui::Component component_;
     std::vector<std::string> entries_;
     ftxui::Element title_element_; // 缓存标题元素

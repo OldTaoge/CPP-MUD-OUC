@@ -1,66 +1,54 @@
-#ifndef CPP_MUD_OUC_INVENTORY_HPP
-#define CPP_MUD_OUC_INVENTORY_HPP
+#pragma once
 #include "../display.hpp"
-#include <ftxui/component/component.hpp>
-#include <ftxui/component/screen_interactive.hpp>
-#include <string>
+#include "../../core/game.h"
+#include "../../core/item.h"
 #include <vector>
-#include <memory>
-#include "../../player/item.h"
-
-// 前向声明
-class Player;
+#include <string>
 
 class InventoryScreen : public BaseScreen {
 public:
-    InventoryScreen(Player* player);
+    InventoryScreen(Game* game);
     ~InventoryScreen() = default;
 
     // 实现基类的虚函数
     ftxui::Component GetComponent() override;
-    
-    // 更新物品栏信息
-    void UpdateInventory();
-    
-    // 处理物品操作
-    void HandleItemAction(int itemIndex, const std::string& action);
 
 private:
-    // 显示物品详情
-    void ShowItemDetails(int itemIndex);
-    
-    // 关闭物品详情
-    void HideItemDetails();
-    
-    // 玩家对象指针
-    Player* player_;
-    
-    // 使用物品
-    void UseItem(int itemIndex);
-    
-    // 丢弃物品
-    void DropItem(int itemIndex);
-    
-    // 返回游戏界面
-    void ReturnToGame();
-
+    Game* game_;
     ftxui::Component component_;
-    
-    // UI组件
-    ftxui::Component back_button_;
-    ftxui::Component item_list_;
-    std::vector<ftxui::Component> item_buttons_;
-    ftxui::Component item_detail_overlay_;
-    ftxui::Component use_button_;
-    ftxui::Component drop_button_;
-    ftxui::Component close_detail_button_;
-    
 
-    
-    // 状态
-    int selected_item_index_ = -1;
-    bool show_item_detail_ = false;
-    int selected_action_ = 0;
+    // UI 状态
+    std::vector<std::shared_ptr<Item>> currentItems_;
+    std::string selectedItemName_;
+    std::string filterType_;
+    std::string searchKeyword_;
+    int selectedIndex_;
+    int selectedMemberIndex_;
+    bool showItemDetails_;
+    bool showMemberSelection_;
+
+    // UI 组件
+    ftxui::Component itemList_;
+    ftxui::Component itemDetails_;
+    ftxui::Component filterButtons_;
+    ftxui::Component actionButtons_;
+
+    // 初始化函数
+    void InitializeItems();
+    void UpdateItemList();
+    void CreateItemList();
+    void CreateItemDetails();
+    void CreateFilterButtons();
+    void CreateActionButtons();
+
+    // 事件处理
+    void HandleItemSelection(int index);
+    void HandleFilterSelection(const std::string& filter);
+    void HandleAction(int action);
+    void HandleSearch(const std::string& keyword);
+
+    // 辅助函数
+    std::string GetItemDisplayText(const std::shared_ptr<Item>& item) const;
+    std::vector<std::shared_ptr<Item>> GetFilteredItems() const;
+    std::string GetInventoryStats() const;
 };
-
-#endif //CPP_MUD_OUC_INVENTORY_HPP

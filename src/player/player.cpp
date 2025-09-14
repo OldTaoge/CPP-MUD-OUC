@@ -1,181 +1,315 @@
-#include "Player.h"
-#include "item.h"
-#include <iostream>
+#include "player.h"
+#include "../core/item.h"
 
-Player::Player(std::string name, int startX, int startY, int startHealth)
-    : name(name), x(startX), y(startY), health(startHealth) {
-    // 初始化物品栏为空
-    // 可以在这里添加一些初始物品
-    
-    // 示例：给玩家一些初始物品
-    Item healthPotion("生命药水", "恢复20点生命值", ItemType::CONSUMABLE,
-                     50, 3, true, 0, 0, 0, 20);
-    addItem(healthPotion);
-    
-    Item ironSword("铁剑", "一把普通的铁剑，提供5点攻击力", ItemType::WEAPON,
-                  100, 1, false, 5, 0, 0, 0);
-    addItem(ironSword);
-    
-    Item goldCoin("金币", "可以用来购买物品", ItemType::MATERIAL,
-                 1, 10, true, 0, 0, 0, 0);
-    addItem(goldCoin);
-    
-    // 添加一些初始任务
-    // 任务1：蒙德城的委托
-    Quest mondstadtQuest("mondstadt_1", "蒙德城的委托", "帮助蒙德城的居民解决问题。");
-    mondstadtQuest.addObjective(QuestObjective("与城市守卫对话"));
-    mondstadtQuest.addObjective(QuestObjective("收集5个苹果"));
-    mondstadtQuest.reward = "铁剑、生命药水";
-    mondstadtQuest.exp_reward = 50;
-    mondstadtQuest.gold_reward = 100;
-    addQuest(mondstadtQuest);
-    
-    // 任务2：冒险的开始
-    Quest adventureQuest("adventure_1", "冒险的开始", "探索周围的区域，了解提瓦特大陆。");
-    adventureQuest.addObjective(QuestObjective("离开蒙德城"));
-    adventureQuest.addObjective(QuestObjective("探索低语森林"));
-    adventureQuest.reward = "冒险笔记、地图";
-    adventureQuest.exp_reward = 30;
-    adventureQuest.gold_reward = 50;
-    addQuest(adventureQuest);
-    
-    // 任务3：元素能量
-    Quest elementQuest("element_1", "元素能量", "了解提瓦特大陆的元素之力。");
-    elementQuest.addObjective(QuestObjective("与丽莎对话"));
-    elementQuest.addObjective(QuestObjective("收集3个元素碎片"));
-    elementQuest.reward = "元素指南、魔法书";
-    elementQuest.exp_reward = 40;
-    elementQuest.gold_reward = 80;
-    addQuest(elementQuest);
+Player::Player(std::string name, int startX, int startY)
+    : name(name), x(startX), y(startY), level(1), experience(0),
+      activeMember(nullptr), inventory(50) {
+    // 创建默认队伍成员
+    addTeamMember("旅行者", 1);
+    setActiveMember(0);
 }
 
-// 添加物品到物品栏
-void Player::addItem(const Item& item) {
-    // 如果物品可堆叠，检查是否已存在同名物品
-    if (item.isStackable) {
-        for (auto& existingItem : inventory) {
-            if (existingItem.name == item.name) {
-                existingItem.addStack(item.stackSize);
-                return;
-            }
+InventoryResult Player::addItemToInventory(std::shared_ptr<Item> item) {
+    return inventory.addItem(item);
+}
+
+InventoryResult Player::removeItemFromInventory(const std::string& itemName, int quantity) {
+    return inventory.removeItem(itemName, quantity);
+}
+
+void Player::addTeamMember(const std::string& name, int level) {
+    auto member = std::make_shared<TeamMember>(name, level);
+    teamMembers.push_back(member);
+    // 新成员加入队伍时，自动设为上场角色
+    member->setStatus(MemberStatus::ACTIVE);
+    activeMember = member;
+}
+
+void Player::setActiveMember(int index) {
+    if (index >= 0 && index < static_cast<int>(teamMembers.size())) {
+        auto member = teamMembers[index];
+        if (member->isActive()) {
+            activeMember = member;
         }
     }
-    // 如果物品不可堆叠或者物品栏中没有同名物品，则直接添加
-    inventory.push_back(item);
 }
 
-// 从物品栏移除物品
-bool Player::removeItem(int index) {
-    if (index < 0 || index >= inventory.size()) {
+bool Player::setMemberActive(int index, bool active) {
+    if (index < 0 || index >= static_cast<int>(teamMembers.size())) {
         return false;
     }
-    inventory.erase(inventory.begin() + index);
+    
+    auto member = teamMembers[index];
+    
+    if (active) {
+        // 检查是否可以添加更多上场成员
+        if (!canAddActiveMembers() && !member->isActive()) {
+            return false;
+        }
+        
+        // 检查成员是否可以上场
+        if (!member->canBeActive()) {
+            return false;
+        }
+        
+        member->setStatus(MemberStatus::ACTIVE);
+        
+        // 如果当前没有活跃成员，设置为当前活跃成员
+        if (!activeMember) {
+            activeMember = member;
+        }
+    } else {
+        // 不能让所有成员都下场
+        if (getActiveCount() <= 1) {
+            return false;
+        }
+        
+        member->setStatus(MemberStatus::STANDBY);
+        
+        // 如果这是当前活跃成员，切换到下一个
+        if (activeMember == member) {
+            switchToNextActiveMember();
+        }
+    }
+    
     return true;
 }
 
-// 查找物品
-Item* Player::findItem(const std::string& itemName) {
-    for (auto& item : inventory) {
-        if (item.name == itemName) {
-            return &item;
+std::vector<std::shared_ptr<TeamMember>> Player::getActiveMembers() const {
+    std::vector<std::shared_ptr<TeamMember>> activeMembers;
+    for (const auto& member : teamMembers) {
+        if (member->isActive()) {
+            activeMembers.push_back(member);
         }
     }
-    return nullptr;
+    return activeMembers;
 }
 
-// 使用物品
-bool Player::useItem(int index) {
-    if (index < 0 || index >= inventory.size()) {
+std::vector<std::shared_ptr<TeamMember>> Player::getStandbyMembers() const {
+    std::vector<std::shared_ptr<TeamMember>> standbyMembers;
+    for (const auto& member : teamMembers) {
+        if (!member->isActive()) {
+            standbyMembers.push_back(member);
+        }
+    }
+    return standbyMembers;
+}
+
+int Player::getActiveCount() const {
+    int count = 0;
+    for (const auto& member : teamMembers) {
+        if (member->isActive()) {
+            count++;
+        }
+    }
+    return count;
+}
+
+bool Player::switchToNextActiveMember() {
+    auto activeMembers = getActiveMembers();
+    if (activeMembers.empty()) {
         return false;
     }
     
-    Item& item = inventory[index];
-    if (item.use()) {
-        // 如果物品堆叠数量变为0，则从物品栏中移除
-        if (item.stackSize <= 0) {
-            removeItem(index);
+    // 找到当前活跃成员的索引
+    int currentIndex = -1;
+    for (int i = 0; i < activeMembers.size(); ++i) {
+        if (activeMembers[i] == activeMember) {
+            currentIndex = i;
+            break;
         }
+    }
+    
+    // 切换到下一个
+    int nextIndex = (currentIndex + 1) % activeMembers.size();
+    activeMember = activeMembers[nextIndex];
+    return true;
+}
+
+bool Player::switchToPreviousActiveMember() {
+    auto activeMembers = getActiveMembers();
+    if (activeMembers.empty()) {
+        return false;
+    }
+    
+    // 找到当前活跃成员的索引
+    int currentIndex = -1;
+    for (int i = 0; i < activeMembers.size(); ++i) {
+        if (activeMembers[i] == activeMember) {
+            currentIndex = i;
+            break;
+        }
+    }
+    
+    // 切换到上一个
+    int prevIndex = (currentIndex - 1 + activeMembers.size()) % activeMembers.size();
+    activeMember = activeMembers[prevIndex];
+    return true;
+}
+
+bool Player::switchToMember(int index) {
+    if (index < 0 || index >= static_cast<int>(teamMembers.size())) {
+        return false;
+    }
+    
+    auto member = teamMembers[index];
+    if (member->isActive()) {
+        activeMember = member;
         return true;
     }
+    
     return false;
 }
 
-// 添加任务
-void Player::addQuest(const Quest& quest) {
-    quests_.push_back(quest);
-}
+InventoryResult Player::useItem(const std::string& itemName) {
+    auto item = inventory.getItem(itemName);
+    if (!item) {
+        return InventoryResult::NOT_FOUND;
+    }
 
-// 获取所有任务
-const std::vector<Quest>& Player::getQuests() const {
-    return quests_;
-}
-
-// 查找任务
-Quest* Player::findQuest(const std::string& questId) {
-    for (auto& quest : quests_) {
-        if (quest.id == questId) {
-            return &quest;
+    // 根据物品类型执行不同效果
+    switch (item->getType()) {
+        case ItemType::FOOD: {
+            auto food = std::dynamic_pointer_cast<Food>(item);
+            if (food && activeMember) {
+                switch (food->getFoodType()) {
+                    case FoodType::RECOVERY:
+                        activeMember->heal(food->getEffectValue());
+                        break;
+                    case FoodType::ATTACK:
+                        // 暂时增加当前成员的攻击力（后续可以改为临时buff）
+                        break;
+                    case FoodType::DEFENSE:
+                        // 暂时增加当前成员的防御力（后续可以改为临时buff）
+                        break;
+                    case FoodType::ADVENTURE:
+                        // 冒险类效果可以增加经验或其他冒险属性
+                        experience += food->getEffectValue();
+                        break;
+                }
+            }
+            break;
         }
+        case ItemType::WEAPON:
+        case ItemType::ARTIFACT:
+            // 装备类物品需要单独装备
+            return InventoryResult::INVALID_OPERATION;
+        case ItemType::MATERIAL:
+            // 材料类物品通常不能直接使用
+            return InventoryResult::INVALID_OPERATION;
     }
-    return nullptr;
+
+    return inventory.useItem(itemName);
 }
 
-// 开始任务
-bool Player::startQuest(const std::string& questId) {
-    Quest* quest = findQuest(questId);
-    if (!quest) {
+bool Player::equipWeaponForMember(int memberIndex, const std::string& weaponName) {
+    if (memberIndex < 0 || memberIndex >= static_cast<int>(teamMembers.size())) {
         return false;
     }
-    
-    quest->start();
-    return true;
+
+    auto item = inventory.getItem(weaponName);
+    if (!item || item->getType() != ItemType::WEAPON) {
+        return false;
+    }
+
+    auto weapon = std::dynamic_pointer_cast<Weapon>(item);
+    if (!weapon) {
+        return false;
+    }
+
+    // 如果该成员已经装备了武器，先卸下
+    auto member = teamMembers[memberIndex];
+    if (member->getEquippedWeapon()) {
+        unequipWeaponFromMember(memberIndex);
+    }
+
+    // 为成员装备武器
+    if (member->equipWeapon(weapon)) {
+        inventory.removeItem(weaponName, 1);
+        return true;
+    }
+
+    return false;
 }
 
-// 完成任务
-bool Player::completeQuest(const std::string& questId) {
-    Quest* quest = findQuest(questId);
-    if (!quest) {
+bool Player::equipArtifactForMember(int memberIndex, const std::string& artifactName) {
+    if (memberIndex < 0 || memberIndex >= static_cast<int>(teamMembers.size())) {
         return false;
     }
-    
-    return quest->complete();
+
+    auto item = inventory.getItem(artifactName);
+    if (!item || item->getType() != ItemType::ARTIFACT) {
+        return false;
+    }
+
+    auto artifact = std::dynamic_pointer_cast<Artifact>(item);
+    if (!artifact) {
+        return false;
+    }
+
+    // 如果该成员已经装备了圣遗物，先卸下
+    auto member = teamMembers[memberIndex];
+    if (member->getEquippedArtifact()) {
+        unequipArtifactFromMember(memberIndex);
+    }
+
+    // 为成员装备圣遗物
+    if (member->equipArtifact(artifact)) {
+        inventory.removeItem(artifactName, 1);
+        return true;
+    }
+
+    return false;
 }
 
-// 更新任务目标进度
-bool Player::updateQuestObjective(const std::string& questId, int objectiveIndex, int amount) {
-    Quest* quest = findQuest(questId);
-    if (!quest) {
-        return false;
+void Player::unequipWeaponFromMember(int memberIndex) {
+    if (memberIndex < 0 || memberIndex >= static_cast<int>(teamMembers.size())) {
+        return;
     }
-    
-    return quest->updateObjective(objectiveIndex, amount);
+
+    auto member = teamMembers[memberIndex];
+    auto weapon = member->getEquippedWeapon();
+    if (weapon) {
+        // 将武器放回背包
+        inventory.addItem(weapon);
+        member->unequipWeapon();
+    }
 }
 
-// 获取任务奖励
-bool Player::claimQuestReward(const std::string& questId) {
-    Quest* quest = findQuest(questId);
-    if (!quest || quest->status != QuestStatus::COMPLETED) {
-        return false;
+void Player::unequipArtifactFromMember(int memberIndex) {
+    if (memberIndex < 0 || memberIndex >= static_cast<int>(teamMembers.size())) {
+        return;
     }
-    
-    // 发放金币奖励
-    if (quest->gold_reward > 0) {
-        // 查找金币物品
-        Item* goldItem = findItem("金币");
-        if (goldItem && goldItem->isStackable) {
-            // 如果已有金币，增加堆叠数量
-            goldItem->addStack(quest->gold_reward);
-        } else {
-            // 否则，添加新的金币物品
-            Item newGold("金币", "可以用来购买物品", ItemType::MATERIAL,
-                        1, quest->gold_reward, true, 0, 0, 0, 0);
-            addItem(newGold);
-        }
+
+    auto member = teamMembers[memberIndex];
+    auto artifact = member->getEquippedArtifact();
+    if (artifact) {
+        // 将圣遗物放回背包
+        inventory.addItem(artifact);
+        member->unequipArtifact();
     }
-    
-    // 这里可以添加其他奖励的发放逻辑，如物品、经验等
-    // 注意：经验值系统目前未实现，可以根据实际需求添加
-    
-    // 任务奖励已领取
-    return true;
+}
+
+int Player::getTotalAttackPower() const {
+    return activeMember ? activeMember->getTotalAttack() : 0;
+}
+
+int Player::getTotalDefensePower() const {
+    return activeMember ? activeMember->getTotalDefense() : 0;
+}
+
+void Player::takeDamage(int damage) {
+    if (activeMember) {
+        activeMember->takeDamage(damage);
+    }
+}
+
+void Player::heal(int amount) {
+    if (activeMember) {
+        activeMember->heal(amount);
+    }
+}
+
+bool Player::isAlive() const {
+    return activeMember && activeMember->isAlive();
 }

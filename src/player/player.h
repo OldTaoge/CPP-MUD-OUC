@@ -1,52 +1,61 @@
 #pragma once
 #include <string>
 #include <vector>
-#include "item.h"
-#include "quest.h"
+#include "../core/inventory.h"
+#include "../core/team_member.h"
 
 class Player {
 public:
     std::string name;
     int x, y; // 玩家坐标
-    int health;
-    std::vector<Item> inventory; // 玩家物品栏
+    int level;
+    int experience;
 
-    Player(std::string name, int startX, int startY, int startHealth);
+    // 队伍成员
+    std::vector<std::shared_ptr<TeamMember>> teamMembers;
+    std::shared_ptr<TeamMember> activeMember; // 当前活跃的队伍成员
+    static const int MAX_ACTIVE_MEMBERS = 4; // 最大上场人数
+
+    // 背包
+    Inventory inventory;
+
+    Player(std::string name, int startX, int startY);
+
+    // 队伍成员管理
+    void addTeamMember(const std::string& name, int level = 1);
+    void setActiveMember(int index);
+    std::shared_ptr<TeamMember> getActiveMember() const { return activeMember; }
+    std::vector<std::shared_ptr<TeamMember>> getTeamMembers() const { return teamMembers; }
     
-    // 添加物品到物品栏
-    void addItem(const Item& item);
+    // 队伍配置管理
+    bool setMemberActive(int index, bool active);
+    std::vector<std::shared_ptr<TeamMember>> getActiveMembers() const;
+    std::vector<std::shared_ptr<TeamMember>> getStandbyMembers() const;
+    int getActiveCount() const;
+    bool canAddActiveMembers() const { return getActiveCount() < MAX_ACTIVE_MEMBERS; }
     
-    // 从物品栏移除物品
-    bool removeItem(int index);
-    
-    // 查找物品
-    Item* findItem(const std::string& itemName);
-    
-    // 使用物品
-    bool useItem(int index);
-    
-    // 任务相关方法
-    // 添加任务
-    void addQuest(const Quest& quest);
-    
-    // 获取所有任务
-    const std::vector<Quest>& getQuests() const;
-    
-    // 查找任务
-    Quest* findQuest(const std::string& questId);
-    
-    // 开始任务
-    bool startQuest(const std::string& questId);
-    
-    // 完成任务
-    bool completeQuest(const std::string& questId);
-    
-    // 更新任务目标进度
-    bool updateQuestObjective(const std::string& questId, int objectiveIndex, int amount = 1);
-    
-    // 获取任务奖励
-    bool claimQuestReward(const std::string& questId);
-    
-private:
-    std::vector<Quest> quests_;  // 玩家的任务列表
+    // 队友切换
+    bool switchToNextActiveMember();
+    bool switchToPreviousActiveMember();
+    bool switchToMember(int index);
+
+    // 物品管理
+    InventoryResult addItemToInventory(std::shared_ptr<Item> item);
+    InventoryResult removeItemFromInventory(const std::string& itemName, int quantity = 1);
+    InventoryResult useItem(const std::string& itemName);
+
+    // 装备管理（为指定队伍成员装备）
+    bool equipWeaponForMember(int memberIndex, const std::string& weaponName);
+    bool equipArtifactForMember(int memberIndex, const std::string& artifactName);
+    void unequipWeaponFromMember(int memberIndex);
+    void unequipArtifactFromMember(int memberIndex);
+
+    // 战斗相关
+    int getTotalAttackPower() const;
+    int getTotalDefensePower() const;
+
+    // 状态管理
+    void takeDamage(int damage);
+    void heal(int amount);
+    bool isAlive() const;
 };

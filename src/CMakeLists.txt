@@ -6,6 +6,14 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_subdirectory(FTXUI-src)
 add_executable(CPP_MUD_OUC core/main.cpp
+        core/item.cpp
+        core/item.h
+        core/inventory.cpp
+        core/inventory.h
+        core/team_member.cpp
+        core/team_member.h
+        core/map_v2.cpp
+        core/map_v2.h
         player/player.cpp
         player/player.h
         player/item.cpp
@@ -24,24 +32,22 @@ add_executable(CPP_MUD_OUC core/main.cpp
         storage/storage.h
         interaction/interaction.cpp
         interaction/interaction.h
-        loader/loader.cpp
-        loader/loader.h
         display/screens/mainmenu.cpp
         display/screens/mainmenu.hpp
-        display/screens/gameplay.cpp
-        display/screens/gameplay.hpp
+        display/screens/inventory.cpp
+        display/screens/inventory.hpp
         display/screens/illustrateMenu.cpp
         display/screens/illustrateMenu.hpp
         display/screens/settings.cpp
         display/screens/settings.hpp
-        display/screens/inventory.cpp
-        display/screens/inventory.hpp
-        display/screens/questscreen.cpp
-        display/screens/questscreen.hpp
-        display/screens/mapScreen.cpp
-        display/screens/mapScreen.hpp
-        core/map.cpp
-        core/map.h
+        display/screens/gameplay.cpp
+        display/screens/gameplay.hpp
+        display/screens/map.cpp
+        display/screens/map.hpp
+        display/screens/team.cpp
+        display/screens/team.hpp
+        display/screens/save_select.cpp
+        display/screens/save_select.hpp
         utils/utils.cpp
         utils/utils.hpp)
 
@@ -54,3 +60,5 @@ target_link_libraries(CPP_MUD_OUC
         PRIVATE ftxui::dom
         PRIVATE ftxui::component
 )
+
+

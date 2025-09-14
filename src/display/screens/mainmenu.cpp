@@ -100,15 +100,15 @@ Component ScreenMainMenu::GetComponent() {
 
 void ScreenMainMenu::HandleSelection(int selected_option) {
     if (!navigation_callback_) return;
-    
+
     switch (selected_option) {
         case 0:
-            std::cout << "正在启动新游戏..." << std::endl;
-            navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Gameplay"));
+            // 开始新游戏
+            navigation_callback_(NavigationRequest(NavigationAction::START_NEW_GAME));
             break;
         case 1:
-            std::cout << "正在加载游戏..." << std::endl;
-            // TODO: 实际加载游戏的逻辑
+            // 加载游戏
+            navigation_callback_(NavigationRequest(NavigationAction::LOAD_GAME));
             break;
         case 2:
             navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Illustrate"));

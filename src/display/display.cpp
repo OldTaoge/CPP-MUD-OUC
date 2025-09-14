@@ -9,12 +9,12 @@
 #include "screens/mainmenu.hpp"
 #include "screens/illustrateMenu.hpp"
 #include "screens/settings.hpp"
-#include "screens/gameplay.hpp"
 #include "screens/inventory.hpp"
-#include "screens/questscreen.hpp"
-#include "screens/mapScreen.hpp"
-#include "../player/player.h"
-#include "../core/map.h"
+#include "screens/gameplay.hpp"
+#include "screens/map.hpp"
+#include "screens/team.hpp"
+#include "screens/save_select.hpp"
+
 
 using namespace ftxui;
 
@@ -24,44 +24,49 @@ ScreenManager::ScreenManager()
       nextScreen_(""),
       shouldQuit_(false),
       shouldSwitchScreen_(false),
-      player_(new Player("旅行者", 0, 0, 100)),
-      mapManager_(new MapManager())
+      game_() // 初始化游戏对象
 {
     // 创建导航回调
-    auto nav_callback = [this](const NavigationRequest& request) {
+    auto nav_callback = [this](const NavigationRequest &request) {
         this->HandleNavigationRequest(request);
     };
-    
+
     // 创建MainMenu屏幕实例
     screens_["MainMenu"] = new ScreenMainMenu();
     screens_["MainMenu"]->SetNavigationCallback(nav_callback);
-    
-    // 创建游戏主界面实例
-    screens_["Gameplay"] = new GameplayScreen(player_);
-    screens_["Gameplay"]->SetNavigationCallback(nav_callback);
-    // 设置地图管理器
-    static_cast<GameplayScreen*>(screens_["Gameplay"])->SetMapManager(mapManager_);
-    
+        
     // 创建游戏说明屏幕实例
     screens_["Illustrate"] = new IllustrateMenu();
     screens_["Illustrate"]->SetNavigationCallback(nav_callback);
-    
+
     // 创建设置屏幕实例
     screens_["Settings"] = new SettingsScreen();
     screens_["Settings"]->SetNavigationCallback(nav_callback);
-    
+
     // 创建背包屏幕实例
-    screens_["Inventory"] = new InventoryScreen(player_);
+    screens_["Inventory"] = new InventoryScreen(&game_);
     screens_["Inventory"]->SetNavigationCallback(nav_callback);
-    
-    // 创建任务屏幕实例
-    screens_["Quest"] = new QuestScreen(player_);
-    screens_["Quest"]->SetNavigationCallback(nav_callback);
-    
-    // 创建地图屏幕实例
-    screens_["Map"] = new MapScreen(mapManager_);
+
+    // 创建游戏界面屏幕实例
+    screens_["Gameplay"] = new GameplayScreen(&game_);
+    screens_["Gameplay"]->SetNavigationCallback(nav_callback);
+
+    // 创建地图界面屏幕实例
+    screens_["Map"] = new MapScreen(&game_);
     screens_["Map"]->SetNavigationCallback(nav_callback);
-    
+
+    // 创建队伍配置屏幕实例
+    screens_["Team"] = new TeamScreen(&game_);
+    screens_["Team"]->SetNavigationCallback(nav_callback);
+
+    // 创建存档选择屏幕实例（加载模式）
+    screens_["SaveLoad"] = new SaveSelectScreen(&game_, SaveSelectMode::LOAD);
+    screens_["SaveLoad"]->SetNavigationCallback(nav_callback);
+
+    // 创建存档选择屏幕实例（保存模式）
+    screens_["SaveSave"] = new SaveSelectScreen(&game_, SaveSelectMode::SAVE);
+    screens_["SaveSave"]->SetNavigationCallback(nav_callback);
+
     // 创建第一个屏幕实例
     CreateNewScreen();
 }
@@ -95,6 +100,13 @@ ScreenManager::~ScreenManager() {
 void ScreenManager::HandleNavigationRequest(const NavigationRequest& request) {
     switch (request.action) {
         case NavigationAction::SWITCH_SCREEN:
+            // 如果切换到设置页面，设置来源界面
+            if (request.target_screen == "Settings") {
+                SettingsScreen* settingsScreen = dynamic_cast<SettingsScreen*>(screens_["Settings"]);
+                if (settingsScreen) {
+                    settingsScreen->SetSourceScreen(currentScreen_);
+                }
+            }
             nextScreen_ = request.target_screen;
             shouldSwitchScreen_ = true;
             // 退出当前Loop，让mainloop能够处理屏幕切换
@@ -102,6 +114,29 @@ void ScreenManager::HandleNavigationRequest(const NavigationRequest& request) {
                 screen_->Exit();
             }
             break;
+        case NavigationAction::START_NEW_GAME:
+            StartNewGame();
+            break;
+        case NavigationAction::LOAD_GAME:
+            nextScreen_ = "SaveLoad";
+            shouldSwitchScreen_ = true;
+            if (screen_) {
+                screen_->Exit();
+            }
+            break;
+        case NavigationAction::SAVE_GAME: {
+            // 设置保存存档页面的来源界面
+            SaveSelectScreen* saveScreen = dynamic_cast<SaveSelectScreen*>(screens_["SaveSave"]);
+            if (saveScreen) {
+                saveScreen->SetSourceScreen(currentScreen_);
+            }
+            nextScreen_ = "SaveSave";
+            shouldSwitchScreen_ = true;
+            if (screen_) {
+                screen_->Exit();
+            }
+            break;
+        }
         case NavigationAction::QUIT_GAME:
             shouldQuit_ = true;
             if (screen_) {
@@ -112,6 +147,16 @@ void ScreenManager::HandleNavigationRequest(const NavigationRequest& request) {
 }
 
 void ScreenManager::SwitchToScreen(const std::string& screenName) {
+    // 检查目标屏幕是否存在
+    if (screens_.count(screenName) == 0) {
+        std::cerr << "Error: Target screen '" << screenName << "' not found! Available screens: ";
+        for (const auto& pair : screens_) {
+            std::cerr << "'" << pair.first << "' ";
+        }
+        std::cerr << std::endl;
+        return; // 不进行切换，保持当前屏幕
+    }
+    
     // 删除旧的屏幕实例
     if (screen_) {
         // 先退出当前屏幕，确保所有任务都被清理
@@ -129,6 +174,55 @@ void ScreenManager::SwitchToScreen(const std::string& screenName) {
     
     // 更新当前屏幕名称
     currentScreen_ = screenName;
+    
+    // 如果切换到地图界面，更新地图数据
+    if (screenName == "Map" && screens_.count("Map")) {
+        MapScreen* mapScreen = dynamic_cast<MapScreen*>(screens_["Map"]);
+        if (mapScreen) {
+            mapScreen->UpdateMapData(game_);
+        }
+    }
+    
+    // 如果切换到游戏界面，更新游戏界面的显示信息
+    if (screenName == "Gameplay" && screens_.count("Gameplay")) {
+        GameplayScreen* gameplayScreen = dynamic_cast<GameplayScreen*>(screens_["Gameplay"]);
+        if (gameplayScreen) {
+            gameplayScreen->UpdateMapDisplay();
+            // 更新玩家信息显示
+            gameplayScreen->UpdatePlayerInfo(game_.getPlayer());
+            
+            // 更新队伍状态显示
+            gameplayScreen->RefreshTeamDisplay();
+            
+            // 根据游戏状态添加相应的欢迎消息
+            if (game_.getCurrentState() == GameState::PLAYING) {
+                // 检查是否是新游戏（通过检查玩家等级和经验判断）
+                const auto& player = game_.getPlayer();
+                if (player.level == 1 && player.experience == 0) {
+                    gameplayScreen->UpdateGameStatus("欢迎来到新的冒险！");
+                    gameplayScreen->UpdateGameStatus("使用 WASD 移动，空格键交互，T 打开工具菜单");
+                } else {
+                    gameplayScreen->UpdateGameStatus("游戏数据已加载完成");
+                }
+            }
+        }
+    }
+
+    // 如果切换到队伍界面，刷新队伍数据
+    if (screenName == "Team" && screens_.count("Team")) {
+        TeamScreen* teamScreen = dynamic_cast<TeamScreen*>(screens_["Team"]);
+        if (teamScreen) {
+            teamScreen->Refresh();
+        }
+    }
+    
+    // 如果切换到存档选择界面，刷新存档列表
+    if ((screenName == "SaveLoad" || screenName == "SaveSave") && screens_.count(screenName)) {
+        SaveSelectScreen* saveScreen = dynamic_cast<SaveSelectScreen*>(screens_[screenName]);
+        if (saveScreen) {
+            saveScreen->RefreshSaveList();
+        }
+    }
     
     // 创建新的屏幕实例
     screen_ = new ScreenInteractive(ScreenInteractive::Fullscreen());
@@ -161,4 +255,45 @@ void ScreenManager::mainloop() {
             break;
         }
     }
+}
+
+void ScreenManager::StartNewGame() {
+    game_.StartNewGame();
+    
+    // 清空游戏界面的历史消息
+    if (screens_.count("Gameplay")) {
+        GameplayScreen* gameplayScreen = dynamic_cast<GameplayScreen*>(screens_["Gameplay"]);
+        if (gameplayScreen) {
+            gameplayScreen->ClearAllMessages();
+        }
+    }
+    
+    // 切换到游戏界面
+    nextScreen_ = "Gameplay";
+    shouldSwitchScreen_ = true;
+    if (screen_) {
+        screen_->Exit();
+    }
+}
+
+void ScreenManager::LoadGame() {
+    // 清空游戏界面的历史消息
+    if (screens_.count("Gameplay")) {
+        GameplayScreen* gameplayScreen = dynamic_cast<GameplayScreen*>(screens_["Gameplay"]);
+        if (gameplayScreen) {
+            gameplayScreen->ClearAllMessages();
+        }
+    }
+    
+    game_.LoadGame();
+    // 切换到游戏界面
+    nextScreen_ = "Gameplay";
+    shouldSwitchScreen_ = true;
+    if (screen_) {
+        screen_->Exit();
+    }
+}
+
+void ScreenManager::SaveGame() {
+    game_.SaveGame();
 }

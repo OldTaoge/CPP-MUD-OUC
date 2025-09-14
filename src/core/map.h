@@ -2,138 +2,202 @@
 #include <string>
 #include <vector>
 #include <memory>
-#include <random>
-#include "../player/item.h"
+#include <map>
+#include <functional>
+#include "../core/item.h"
+#include "../player/player.h"
 
-// 可交互实体基类
-class InteractableEntity {
-public:
-    std::string name;
-    std::string description;
-    bool isActive;
-    
-    InteractableEntity(const std::string& name, const std::string& description);
-    virtual ~InteractableEntity() = default;
-    
-    virtual std::string getInteractionText() const = 0;
-    virtual bool interact() = 0;
-    virtual std::string getDisplayInfo() const = 0;
+// 地图区块类型枚举
+enum class MapBlockType {
+    TUTORIAL,           // 教学区块
+    STATUE_OF_SEVEN,    // 七天神像
+    BATTLE,             // 战斗区块
+    DIALOGUE,           // 对话区块
+    CITY                // 城市区块
 };
 
-// NPC类
-class NPC : public InteractableEntity {
-public:
-    std::string dialogue;
-    std::vector<std::string> quests;
-    bool hasQuest;
-    
-    NPC(const std::string& name, const std::string& description, 
-        const std::string& dialogue, const std::vector<std::string>& quests = {});
-    
-    std::string getInteractionText() const override;
-    bool interact() override;
-    std::string getDisplayInfo() const override;
-    
-    std::string getRandomDialogue() const;
+// 地图区块状态
+enum class BlockState {
+    LOCKED,     // 锁定状态
+    UNLOCKED,   // 解锁状态
+    COMPLETED   // 完成状态
 };
 
-// 敌对实体类
-class Enemy : public InteractableEntity {
-public:
-    int health;
-    int attack;
-    int defense;
-    int expReward;
-    std::vector<Item> lootTable;
-    
-    Enemy(const std::string& name, const std::string& description,
-          int health, int attack, int defense, int expReward);
-    
-    std::string getInteractionText() const override;
-    bool interact() override;
-    std::string getDisplayInfo() const override;
-    
-    void addLoot(const Item& item);
-    std::vector<Item> getLoot() const;
-    bool isAlive() const;
-    void takeDamage(int damage);
+// 交互类型
+enum class InteractionType {
+    PICKUP,     // 拾取物品
+    BATTLE,     // 战斗
+    DIALOGUE,   // 对话
+    ACTIVATE,   // 激活（如七天神像）
+    ENTER       // 进入
 };
 
-// 可拾取物品类
-class CollectibleItem : public InteractableEntity {
-public:
-    Item item;
-    bool isCollected;
+// 前向声明
+class MapBlock;
+class MapManager;
+
+// 交互结果结构
+struct InteractionResult {
+    bool success;
+    std::string message;
+    std::vector<std::shared_ptr<Item>> rewards;
+    bool blockCompleted;
     
-    CollectibleItem(const std::string& name, const std::string& description, const Item& item);
-    
-    std::string getInteractionText() const override;
-    bool interact() override;
-    std::string getDisplayInfo() const override;
-    
-    Item collect();
-    bool canCollect() const;
+    InteractionResult(bool s = false, const std::string& msg = "", 
+                     const std::vector<std::shared_ptr<Item>>& r = {},
+                     bool completed = false)
+        : success(s), message(msg), rewards(r), blockCompleted(completed) {}
 };
 
-// 地图区域类
-class MapArea {
+// 地图区块基类
+class MapBlock {
 public:
-    std::string name;
-    std::string description;
-    std::vector<std::unique_ptr<NPC>> npcs;
-    std::vector<std::unique_ptr<Enemy>> enemies;
-    std::vector<std::unique_ptr<CollectibleItem>> collectibles;
+    MapBlock(const std::string& name, MapBlockType type, int x, int y, 
+             const std::string& description);
+    virtual ~MapBlock() = default;
+
+    // 基本信息
+    std::string getName() const { return name_; }
+    MapBlockType getType() const { return type_; }
+    int getX() const { return x_; }
+    int getY() const { return y_; }
+    std::string getDescription() const { return description_; }
+    BlockState getState() const { return state_; }
+    void setState(BlockState state) { state_ = state; }
+
+    // 交互系统
+    virtual InteractionResult interact(Player& player, InteractionType interactionType);
+    virtual bool canInteract(InteractionType interactionType) const;
+    virtual std::vector<InteractionType> getAvailableInteractions() const;
+
+    // 渲染信息
+    virtual std::string getDisplaySymbol() const;
+    virtual std::string getDisplayName() const;
+
+protected:
+    std::string name_;
+    MapBlockType type_;
+    int x_, y_;
+    std::string description_;
+    BlockState state_;
     
-    MapArea(const std::string& name, const std::string& description);
+    // 交互处理函数映射
+    std::map<InteractionType, std::function<InteractionResult(Player&)>> interactionHandlers_;
     
-    void addNPC(std::unique_ptr<NPC> npc);
-    void addEnemy(std::unique_ptr<Enemy> enemy);
-    void addCollectible(std::unique_ptr<CollectibleItem> collectible);
-    
-    std::string getAreaInfo() const;
-    std::vector<std::string> getInteractableList() const;
-    
-    // 获取特定类型的可交互实体
-    std::vector<NPC*> getNPCs() const;
-    std::vector<Enemy*> getEnemies() const;
-    std::vector<CollectibleItem*> getCollectibles() const;
+    // 初始化交互处理器
+    virtual void initializeInteractionHandlers() = 0;
 };
 
-// 地图管理类
-class MapManager {
+// 教学区块 - 教会用户基本操作
+class TutorialBlock : public MapBlock {
 public:
-    static const int MAP_SIZE = 5; // 5个区块
+    TutorialBlock(int x, int y);
     
-    MapManager();
-    ~MapManager();
+protected:
+    void initializeInteractionHandlers() override;
+    InteractionResult handlePickup(Player& player);
+    InteractionResult handleMovement(Player& player);
+};
+
+// 七天神像区块 - 给予风元素和宝箱奖励
+class StatueOfSevenBlock : public MapBlock {
+public:
+    StatueOfSevenBlock(int x, int y);
     
-    void initializeMap();
-    MapArea* getArea(int index);
-    std::string getMapOverview() const;
-    
-    // 移动相关
-    bool canMoveToArea(int areaIndex) const;
-    void moveToArea(int areaIndex);
-    int getCurrentArea() const;
-    
-    // 战斗相关
-    std::vector<Enemy*> getEnemiesInCurrentArea() const;
-    void removeEnemyFromCurrentArea(Enemy* enemy);
-    
-    // 收集物品相关
-    std::vector<CollectibleItem*> getCollectiblesInCurrentArea() const;
-    void removeCollectibleFromCurrentArea(CollectibleItem* collectible);
-    
-    // 获取当前区域信息
-    std::string getCurrentAreaInfo() const;
+protected:
+    void initializeInteractionHandlers() override;
+    InteractionResult handleActivate(Player& player);
+    InteractionResult handleChest(Player& player);
     
 private:
-    std::vector<std::unique_ptr<MapArea>> areas_;
-    int currentArea_;
+    bool activated_;
+    bool chestOpened_;
+};
+
+// 史莱姆战斗区块
+class SlimeBattleBlock : public MapBlock {
+public:
+    SlimeBattleBlock(int x, int y);
     
-    void createForestArea();      // 森林区域
-    void createVillageArea();    // 村庄区域
-    void createDungeonArea();    // 地下城区域
-    void createMountainArea();   // 山地区域
-    void createCastleArea();     // 城堡区域
+protected:
+    void initializeInteractionHandlers() override;
+    InteractionResult handleBattle(Player& player);
+    
+private:
+    bool battleCompleted_;
+    int slimeHealth_;
+    int slimeAttack_;
+};
+
+// 安伯对话区块
+class AmberDialogueBlock : public MapBlock {
+public:
+    AmberDialogueBlock(int x, int y);
+    
+protected:
+    void initializeInteractionHandlers() override;
+    InteractionResult handleDialogue(Player& player);
+    
+private:
+    bool dialogueCompleted_;
+    bool amberJoined_;
+};
+
+// 蒙德城区块
+class MondstadtCityBlock : public MapBlock {
+public:
+    MondstadtCityBlock(int x, int y);
+    
+protected:
+    void initializeInteractionHandlers() override;
+    InteractionResult handleEnter(Player& player);
+    InteractionResult handleKaeyaDialogue(Player& player);
+    
+private:
+    bool kaeyaJoined_;
+};
+
+// 地图管理器
+class MapManager {
+public:
+    MapManager();
+    ~MapManager() = default;
+
+    // 地图管理
+    void initializeMap();
+    void addBlock(std::shared_ptr<MapBlock> block);
+    std::shared_ptr<MapBlock> getBlock(int x, int y) const;
+    std::vector<std::shared_ptr<MapBlock>> getAllBlocks() const { return blocks_; }
+    
+    // 玩家位置管理
+    void setPlayerPosition(int x, int y);
+    std::pair<int, int> getPlayerPosition() const { return {playerX_, playerY_}; }
+    
+    // 移动系统
+    bool canMoveTo(int x, int y) const;
+    bool movePlayer(int deltaX, int deltaY);
+    
+    // 交互系统
+    InteractionResult interactWithCurrentBlock(Player& player, InteractionType interactionType);
+    std::vector<InteractionType> getAvailableInteractions() const;
+    
+    // 地图渲染
+    std::vector<std::string> renderMap(int width, int height) const;
+    std::string getCurrentBlockInfo() const;
+    
+    // 进度管理
+    int getCompletedBlocksCount() const;
+    int getTotalBlocksCount() const { return blocks_.size(); }
+    bool isMapCompleted() const;
+
+private:
+    std::vector<std::shared_ptr<MapBlock>> blocks_;
+    std::map<std::pair<int, int>, std::shared_ptr<MapBlock>> blockMap_;
+    int playerX_, playerY_;
+    
+    // 地图边界
+    int minX_, maxX_, minY_, maxY_;
+    
+    void updateMapBounds();
+    std::string getBlockSymbolAt(int x, int y) const;
 };

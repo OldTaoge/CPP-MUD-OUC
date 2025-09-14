@@ -9,15 +9,7 @@
 #include <algorithm>
 
 GameplayScreen::GameplayScreen(Game* game) : game_(game) {
-    // 初始化工具选项
-    tool_options_ = {
-        "背包",
-        "队伍",
-        "地图",
-        "设置",
-        "保存游戏"
-    };
-    
+
     // 初始化地图显示
     current_map_lines_ = {"Loading map..."};
     current_block_info_ = "Initializing...";
@@ -35,26 +27,10 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     chat_input_ = ftxui::Input(&chat_input_buffer_, "输入聊天消息...");
     game_input_ = ftxui::Input(&game_input_buffer_, "输入游戏命令...");
     
-    // 工具按钮
-    tool_button_ = ftxui::Button("工具", [this] {
-        ShowToolOverlay();
-    });
-    
-    // 关闭按钮
-    close_button_ = ftxui::Button("关闭", [this] {
-        HideToolOverlay();
-    });
-    
-    // 创建工具选项按钮
-    for (size_t i = 0; i < tool_options_.size(); ++i) {
-        int index = i; // 捕获索引
-        tool_option_buttons_.push_back(
-            ftxui::Button(tool_options_[i], [this, index] {
-                HandleToolOption(index);
-            })
-        );
-    }
-    
+    // 删除顶部工具按钮和相关弹窗
+    // tool_button_ = ftxui::Button("工具", [this] { ShowToolOverlay(); });
+    // close_button_ = ftxui::Button("关闭", [this] { HideToolOverlay(); });
+    // for (size_t i = 0; i < tool_options_.size(); ++i) { ... }
     // 工具叠加图层已集成到主组件中，不再需要单独的组件
 
     // 底部可点击操作按钮（鼠标/键盘）
@@ -76,22 +52,14 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SAVE_GAME));
     }));
 
-    // 顶栏：左工具按钮 / 中间标题 / 右侧简要状态
-    auto header_container = ftxui::Container::Horizontal({ tool_button_ });
-    auto header_renderer = ftxui::Renderer(header_container, [this] {
-        auto dims = ftxui::Terminal::Size();
-        int header_h = std::max(3, dims.dimy / 10); // 顶栏约 10%
-        
-        // 右侧状态信息 - 使用更美观的显示
+    // 顶栏：仅保留中间标题和右侧状态
+    auto header_renderer = ftxui::Renderer([this] {
+        int header_h = 3;
         std::string right_status = "Lv." + std::to_string(player_level_) +
                                    "  HP:" + std::to_string(player_hp_) + "/" + std::to_string(player_max_hp_);
-        
-        auto left = tool_button_->Render();
         auto center_title = ftxui::text("原神MUD版") | ftxui::bold | ftxui::color(ftxui::Color::Yellow);
         auto right = ftxui::text(right_status) | ftxui::color(ftxui::Color::Cyan);
-        
         auto bar = ftxui::hbox({
-                   left,
                    ftxui::filler(),
                    center_title,
                    ftxui::filler(),
@@ -103,8 +71,8 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     // 中部：左“游戏消息”/右“游戏状态（详细）”
     auto main_renderer = ftxui::Renderer([this] {
         auto dims = ftxui::Terminal::Size();
-        int header_h = std::max(3, dims.dimy / 10);
-        int bottom_h = std::max(3, dims.dimy / 10);
+        int header_h = 3;
+        int bottom_h = 3;
         int main_h = std::max(5, dims.dimy - header_h - bottom_h);
         int message_h = std::max(5, main_h * 6 / 10); // 为消息预留约 60% 的高度
 
@@ -283,8 +251,7 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     // 底部：游戏操作选项（按钮 + 提示）
     auto bottom_container = ftxui::Container::Horizontal(bottom_action_buttons_);
     auto bottom_renderer = ftxui::Renderer(bottom_container, [this] {
-        auto dims = ftxui::Terminal::Size();
-        int bottom_h = std::max(3, dims.dimy / 10); // 底栏约 10%
+        int bottom_h = 6; // 底栏约 10%
         std::vector<ftxui::Element> btns;
         for (auto& b : bottom_action_buttons_) {
             btns.push_back(b->Render());
@@ -292,7 +259,7 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         }
         
         // 操作提示 - 使用更美观的样式
-        auto help = ftxui::text("W/A/S/D 移动  空格 交互  T 工具菜单  Q/E 切换队友") | 
+        auto help = ftxui::text("W/A/S/D 移动  空格 交互  Q/E 切换队友") |
                    ftxui::color(ftxui::Color::GrayLight);
         
         auto bar = ftxui::hbox({ ftxui::hbox(btns), ftxui::filler(), help }) | 
@@ -303,82 +270,31 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     // 主组件（顶栏 / 中部 / 底部）
     component_ = ftxui::Container::Vertical({ header_renderer, main_renderer, bottom_renderer });
 
-    // 将工具菜单以叠加层形式集成
-    std::vector<ftxui::Component> final_components;
-    final_components.push_back(component_);
-    auto tool_menu_component = ftxui::Renderer([this] {
-        if (show_tool_overlay_) {
-            std::vector<ftxui::Element> elements;
-            
-            // 工具菜单标题 - 使用更美观的样式
-            elements.push_back(ftxui::text("=== 工具菜单 ===") | ftxui::bold | ftxui::center | ftxui::color(ftxui::Color::Cyan));
-            elements.push_back(ftxui::separator());
-            
-            // 工具选项 - 添加更好的样式
-            for (size_t i = 0; i < tool_options_.size(); ++i) {
-                auto text = tool_options_[i];
-                if (i == selected_tool_button_) {
-                    text = "> " + text;
-                    elements.push_back(ftxui::text(text) | ftxui::color(ftxui::Color::Yellow) | ftxui::bold);
-                } else {
-                    text = "  " + text;
-                    elements.push_back(ftxui::text(text) | ftxui::color(ftxui::Color::White));
-                }
-            }
-            
-            elements.push_back(ftxui::separator());
-            elements.push_back(ftxui::text("按 Enter 选择，ESC 取消") | ftxui::color(ftxui::Color::GrayLight) | ftxui::center);
-            
-            return ftxui::vbox(elements) | ftxui::border | ftxui::center | ftxui::color(ftxui::Color::Blue);
-        }
-        return ftxui::text("");
-    });
-    final_components.push_back(tool_menu_component);
-    component_ = ftxui::Container::Vertical(final_components);
-    
-    // 设置键盘事件处理
+    // 移除工具菜单叠加层和相关事件处理
+    // component_ |= ftxui::CatchEvent([this](ftxui::Event event) { ... });
     component_ |= ftxui::CatchEvent([this](ftxui::Event event) {
-        if (show_tool_overlay_) {
-            if (event == ftxui::Event::ArrowUp) {
-                selected_tool_button_ = std::max(0, selected_tool_button_ - 1);
-                return true;
-            } else if (event == ftxui::Event::ArrowDown) {
-                selected_tool_button_ = std::min((int)tool_options_.size() - 1, selected_tool_button_ + 1);
-                return true;
-            } else if (event == ftxui::Event::Return) {
-                HandleToolOption(selected_tool_button_);
-                return true;
-            } else if (event == ftxui::Event::Escape) {
-                HideToolOverlay();
-                return true;
-            }
-        } else {
-            // 游戏控制
-            if (event == ftxui::Event::Character('t') || event == ftxui::Event::Character('T')) {
-                ShowToolOverlay();
-                return true;
-            } else if (event == ftxui::Event::Character('w') || event == ftxui::Event::ArrowUp) {
-                HandleGameCommand("move north");
-                return true;
-            } else if (event == ftxui::Event::Character('s') || event == ftxui::Event::ArrowDown) {
-                HandleGameCommand("move south");
-                return true;
-            } else if (event == ftxui::Event::Character('a') || event == ftxui::Event::ArrowLeft) {
-                HandleGameCommand("move west");
-                return true;
-            } else if (event == ftxui::Event::Character('d') || event == ftxui::Event::ArrowRight) {
-                HandleGameCommand("move east");
-                return true;
-            } else if (event == ftxui::Event::Character(' ')) {
-                HandleGameCommand("interact");
-                return true;
-            } else if (event == ftxui::Event::Character('q') || event == ftxui::Event::Character('Q')) {
-                HandleGameCommand("switch_next_member");
-                return true;
-            } else if (event == ftxui::Event::Character('e') || event == ftxui::Event::Character('E')) {
-                HandleGameCommand("switch_prev_member");
-                return true;
-            }
+        // 仅保留游戏控制快捷键
+        if (event == ftxui::Event::Character('w') || event == ftxui::Event::ArrowUp) {
+            HandleGameCommand("move north");
+            return true;
+        } else if (event == ftxui::Event::Character('s') || event == ftxui::Event::ArrowDown) {
+            HandleGameCommand("move south");
+            return true;
+        } else if (event == ftxui::Event::Character('a') || event == ftxui::Event::ArrowLeft) {
+            HandleGameCommand("move west");
+            return true;
+        } else if (event == ftxui::Event::Character('d') || event == ftxui::Event::ArrowRight) {
+            HandleGameCommand("move east");
+            return true;
+        } else if (event == ftxui::Event::Character(' ')) {
+            HandleGameCommand("interact");
+            return true;
+        } else if (event == ftxui::Event::Character('q') || event == ftxui::Event::Character('Q')) {
+            HandleGameCommand("switch_next_member");
+            return true;
+        } else if (event == ftxui::Event::Character('e') || event == ftxui::Event::Character('E')) {
+            HandleGameCommand("switch_prev_member");
+            return true;
         }
         return false;
     });
@@ -463,11 +379,6 @@ void GameplayScreen::UpdateMapDisplay() {
     }
 }
 
-void GameplayScreen::HandleToolButton(int buttonIndex) {
-    if (buttonIndex >= 0 && buttonIndex < tool_options_.size()) {
-        HandleToolOption(buttonIndex);
-    }
-}
 
 void GameplayScreen::HandleGameCommand(const std::string& command) {
     if (!game_) {
@@ -554,66 +465,4 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
     } else {
         UpdateGameStatus("执行命令: " + command);
     }
-}
-
-void GameplayScreen::ShowToolOverlay() {
-    show_tool_overlay_ = true;
-    selected_tool_button_ = 0;
-    UpdateGameStatus("工具菜单已打开");
-}
-
-void GameplayScreen::HideToolOverlay() {
-    show_tool_overlay_ = false;
-    UpdateGameStatus("工具菜单已关闭");
-}
-
-void GameplayScreen::HandleToolOption(int optionIndex) {
-    if (optionIndex < 0 || optionIndex >= tool_options_.size()) {
-        UpdateGameStatus("无效的工具选项索引: " + std::to_string(optionIndex));
-        HideToolOverlay();
-        return;
-    }
-    
-    std::string option = tool_options_[optionIndex];
-    UpdateGameStatus("选择了工具: " + option);
-    
-    try {
-        if (option == "背包") {
-            if (navigation_callback_) {
-                navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Inventory"));
-            } else {
-                UpdateGameStatus("错误: 导航回调未设置");
-            }
-        } else if (option == "队伍") {
-            if (navigation_callback_) {
-                navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Team"));
-            } else {
-                UpdateGameStatus("错误: 导航回调未设置");
-            }
-        } else if (option == "地图") {
-            if (navigation_callback_) {
-                navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Map"));
-            } else {
-                UpdateGameStatus("错误: 导航回调未设置");
-            }
-        } else if (option == "设置") {
-            if (navigation_callback_) {
-                navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Settings"));
-            } else {
-                UpdateGameStatus("错误: 导航回调未设置");
-            }
-        } else if (option == "保存游戏") {
-            if (navigation_callback_) {
-                navigation_callback_(NavigationRequest(NavigationAction::SAVE_GAME));
-            } else {
-                UpdateGameStatus("错误: 导航回调未设置");
-            }
-        } else {
-            UpdateGameStatus("未知的工具选项: " + option);
-        }
-    } catch (const std::exception& e) {
-        UpdateGameStatus("处理工具选项时出错: " + std::string(e.what()));
-    }
-    
-    HideToolOverlay();
 }

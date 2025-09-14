@@ -87,6 +87,13 @@ ScreenManager::~ScreenManager() {
 void ScreenManager::HandleNavigationRequest(const NavigationRequest& request) {
     switch (request.action) {
         case NavigationAction::SWITCH_SCREEN:
+            // 如果切换到设置页面，设置来源界面
+            if (request.target_screen == "Settings") {
+                SettingsScreen* settingsScreen = dynamic_cast<SettingsScreen*>(screens_["Settings"]);
+                if (settingsScreen) {
+                    settingsScreen->SetSourceScreen(currentScreen_);
+                }
+            }
             nextScreen_ = request.target_screen;
             shouldSwitchScreen_ = true;
             // 退出当前Loop，让mainloop能够处理屏幕切换
@@ -104,13 +111,19 @@ void ScreenManager::HandleNavigationRequest(const NavigationRequest& request) {
                 screen_->Exit();
             }
             break;
-        case NavigationAction::SAVE_GAME:
+        case NavigationAction::SAVE_GAME: {
+            // 设置保存存档页面的来源界面
+            SaveSelectScreen* saveScreen = dynamic_cast<SaveSelectScreen*>(screens_["SaveSave"]);
+            if (saveScreen) {
+                saveScreen->SetSourceScreen(currentScreen_);
+            }
             nextScreen_ = "SaveSave";
             shouldSwitchScreen_ = true;
             if (screen_) {
                 screen_->Exit();
             }
             break;
+        }
         case NavigationAction::QUIT_GAME:
             shouldQuit_ = true;
             if (screen_) {

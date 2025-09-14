@@ -36,33 +36,24 @@ public:
     void ClearAllMessages();
 
 private:
-    void HandleToolButton(int buttonIndex);
     void HandleGameCommand(const std::string& command);
-    void ShowToolOverlay();
-    void HideToolOverlay();
-    void HandleToolOption(int optionIndex);
-    
     ftxui::Component component_;
     
     // UI组件
     ftxui::Component chat_input_;
     ftxui::Component game_input_;
-    ftxui::Component tool_button_;
-    ftxui::Component close_button_;  // 关闭按钮
-    std::vector<ftxui::Component> tool_option_buttons_;  // 工具选项按钮
     std::vector<ftxui::Component> bottom_action_buttons_; // 底部操作按钮（鼠标点击）
-    
+
     // 数据存储
     std::vector<std::string> chat_messages_;
     std::vector<std::string> game_messages_;
-    std::vector<std::string> tool_options_;  // 工具选项列表
-    
+
     // 游戏状态
     std::string player_name_;
-    int player_hp_;
-    int player_max_hp_;
-    int player_level_;
-    int player_experience_;
+    int player_hp_ = 0;
+    int player_max_hp_ = 0;
+    int player_level_ = 0;
+    int player_experience_ = 0;
     std::string player_status_;
     std::vector<std::string> team_members_;
     
@@ -73,10 +64,6 @@ private:
     // 输入缓冲区
     std::string chat_input_buffer_;
     std::string game_input_buffer_;
-    
-    // 选择状态
-    int selected_tool_button_ = 0;
-    bool show_tool_overlay_ = false;  // 是否显示工具叠加图层
     
     // 游戏对象引用
     Game* game_;

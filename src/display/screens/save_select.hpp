@@ -40,6 +40,9 @@ public:
     
     // 刷新存档列表
     void RefreshSaveList();
+    
+    // 设置来源界面，用于确定返回的目标
+    void SetSourceScreen(const std::string& source_screen);
 
 private:
     void HandleSaveSlotAction(int slotIndex);
@@ -75,6 +78,7 @@ private:
     std::string inputSaveName_;
     bool showingStatusMessage_;
     std::string statusMessage_;
+    std::string source_screen_; // 来源界面名称
     
     ftxui::Component component_;
     ftxui::Component container_;

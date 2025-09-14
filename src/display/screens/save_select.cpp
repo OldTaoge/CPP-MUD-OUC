@@ -16,7 +16,8 @@ using namespace ftxui;
 
 SaveSelectScreen::SaveSelectScreen(Game* game, SaveSelectMode mode)
     : game_(game), mode_(mode), selectedSlot_(0), showingInput_(false), 
-      showingDeleteConfirm_(false), deleteSlotIndex_(-1), showingStatusMessage_(false) {
+      showingDeleteConfirm_(false), deleteSlotIndex_(-1), showingStatusMessage_(false),
+      source_screen_("MainMenu") {
     RefreshSaveList();
     
     // 创建主容器
@@ -43,6 +44,10 @@ Component SaveSelectScreen::GetComponent() {
 void SaveSelectScreen::SetMode(SaveSelectMode mode) {
     mode_ = mode;
     RefreshSaveList();
+}
+
+void SaveSelectScreen::SetSourceScreen(const std::string& source_screen) {
+    source_screen_ = source_screen;
 }
 
 void SaveSelectScreen::RefreshSaveList() {
@@ -180,9 +185,9 @@ Element SaveSelectScreen::RenderInstructions() {
     Elements instructions;
     
     if (mode_ == SaveSelectMode::LOAD) {
-        instructions.push_back(text("↑↓: 选择存档  Enter: 加载  Del: 删除  Esc: 返回") | hcenter);
+        instructions.push_back(text("↑↓: 选择存档  Enter: 加载  Del: 删除  Esc: 返回  M: 主菜单") | hcenter);
     } else {
-        instructions.push_back(text("↑↓: 选择存档  Enter: 保存  Del: 删除  Esc: 返回") | hcenter);
+        instructions.push_back(text("↑↓: 选择存档  Enter: 保存  Del: 删除  Esc: 返回游戏  M: 主菜单") | hcenter);
     }
     
     return vbox(instructions) | color(Color::GrayLight);
@@ -295,6 +300,14 @@ bool SaveSelectScreen::HandleKeyboardInput(Event event) {
         return true;
     }
     
+    // 添加 M 键退出到主菜单的功能
+    if (event.character() == "m" || event.character() == "M") {
+        if (navigation_callback_) {
+            navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "MainMenu"));
+        }
+        return true;
+    }
+    
     // 清除状态消息
     if (showingStatusMessage_) {
         showingStatusMessage_ = false;
@@ -404,7 +417,14 @@ void SaveSelectScreen::HandleSaveSlotAction(int slotIndex) {
 
 void SaveSelectScreen::HandleBack() {
     if (navigation_callback_) {
-        navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "MainMenu"));
+        // 根据来源界面决定返回目标
+        // 如果是保存模式且来源是游戏界面，返回游戏界面
+        // 否则返回主菜单
+        std::string targetScreen = "MainMenu";
+        if (mode_ == SaveSelectMode::SAVE && source_screen_ == "Gameplay") {
+            targetScreen = "Gameplay";
+        }
+        navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, targetScreen));
     }
 }
 

@@ -10,11 +10,11 @@
 
 using namespace ftxui;
 
-SettingsScreen::SettingsScreen() {
+SettingsScreen::SettingsScreen() : source_screen_("MainMenu") {
     std::string content = "暂无设置可选";
 
-    auto back_button = Button("返回主菜单", [this] {
-        this->HandleSelection(0); // 0 表示返回主菜单
+    auto back_button = Button("返回", [this] {
+        this->HandleSelection(0); // 0 表示返回
     });
 
     // 预创建内容元素，避免每次渲染时重新创建
@@ -40,12 +40,16 @@ ftxui::Component SettingsScreen::GetComponent() {
     return component_;
 }
 
+void SettingsScreen::SetSourceScreen(const std::string& source_screen) {
+    source_screen_ = source_screen;
+}
+
 void SettingsScreen::HandleSelection(int selected_option) {
     if (!navigation_callback_) return;
     
     switch (selected_option) {
-        case 0: // 返回主菜单
-            navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "MainMenu"));
+        case 0: // 返回到来源界面
+            navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, source_screen_));
             break;
         default:
             break;

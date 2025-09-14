@@ -9,6 +9,9 @@
 class SettingsScreen : public BaseScreen {
 public:
     SettingsScreen();
+    
+    // 设置来源界面，用于确定返回的目标
+    void SetSourceScreen(const std::string& source_screen);
 
     ftxui::Component GetComponent() override;
     
@@ -17,6 +20,7 @@ private:
     
     ftxui::Component component_;
     ftxui::Element content_element_; // 缓存内容元素
+    std::string source_screen_; // 来源界面名称
 };
 
 

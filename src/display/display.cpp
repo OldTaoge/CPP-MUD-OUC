@@ -15,7 +15,6 @@
 #include "screens/team.hpp"
 #include "screens/save_select.hpp"
 
-
 using namespace ftxui;
 
 ScreenManager::ScreenManager()
@@ -34,7 +33,7 @@ ScreenManager::ScreenManager()
     // 创建MainMenu屏幕实例
     screens_["MainMenu"] = new ScreenMainMenu();
     screens_["MainMenu"]->SetNavigationCallback(nav_callback);
-        
+
     // 创建游戏说明屏幕实例
     screens_["Illustrate"] = new IllustrateMenu();
     screens_["Illustrate"]->SetNavigationCallback(nav_callback);
@@ -83,18 +82,6 @@ ScreenManager::~ScreenManager() {
         delete pair.second;
     }
     screens_.clear();
-    
-    // 删除玩家对象
-    if (player_) {
-        delete player_;
-        player_ = nullptr;
-    }
-    
-    // 删除地图管理器
-    if (mapManager_) {
-        delete mapManager_;
-        mapManager_ = nullptr;
-    }
 }
 
 void ScreenManager::HandleNavigationRequest(const NavigationRequest& request) {

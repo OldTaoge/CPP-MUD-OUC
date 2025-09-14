@@ -16,14 +16,8 @@ add_executable(CPP_MUD_OUC core/main.cpp
         core/map_v2.h
         player/player.cpp
         player/player.h
-        player/item.cpp
-        player/item.h
-        player/quest.cpp
-        player/quest.h
         core/game.cpp
         core/game.h
-        core/gamestate.cpp
-        core/gamestate.h
         display/display.cpp
         display/display.hpp
         display/window_size_checker.cpp

@@ -27,6 +27,12 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     chat_input_ = ftxui::Input(&chat_input_buffer_, "输入聊天消息...");
     game_input_ = ftxui::Input(&game_input_buffer_, "输入游戏命令...");
     
+    // 删除顶部工具按钮和相关弹窗
+    // tool_button_ = ftxui::Button("工具", [this] { ShowToolOverlay(); });
+    // close_button_ = ftxui::Button("关闭", [this] { HideToolOverlay(); });
+    // for (size_t i = 0; i < tool_options_.size(); ++i) { ... }
+    // 工具叠加图层已集成到主组件中，不再需要单独的组件
+
     // 底部可点击操作按钮（鼠标/键盘）
     bottom_action_buttons_.clear();
     bottom_action_buttons_.push_back(ftxui::Button("交互", [this] { HandleGameCommand("interact"); }));
@@ -299,8 +305,6 @@ ftxui::Component GameplayScreen::GetComponent() {
 }
 
 void GameplayScreen::UpdatePlayerInfo(const Player& player) {
-    GameState& gameState = GameState::getInstance();
-    
     player_name_ = player.name;
     auto active = player.getActiveMember();
     player_hp_ = active ? active->getCurrentHealth() : 0;
@@ -330,7 +334,6 @@ void GameplayScreen::UpdateGameStatus(const std::string& status) {
 }
 
 void GameplayScreen::UpdateTeamStatus(const std::vector<std::string>& teamMembers) {
-    // 这个方法现在由GameState管理，直接使用传入的队伍信息
     team_members_ = teamMembers;
 }
 
@@ -375,6 +378,7 @@ void GameplayScreen::UpdateMapDisplay() {
         current_block_info_ = "Error: " + std::string(e.what());
     }
 }
+
 
 void GameplayScreen::HandleGameCommand(const std::string& command) {
     if (!game_) {

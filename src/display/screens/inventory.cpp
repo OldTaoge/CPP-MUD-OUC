@@ -83,7 +83,6 @@ InventoryScreen::InventoryScreen(Game* game)
 
     component_ = renderer;
 }
-
 Component InventoryScreen::GetComponent() {
     return component_;
 }

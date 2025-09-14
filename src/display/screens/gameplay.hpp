@@ -5,6 +5,7 @@
 #ifndef CPP_MUD_OUC_GAMEPLAY_HPP
 #define CPP_MUD_OUC_GAMEPLAY_HPP
 #include "../display.hpp"
+#include "../../core/gamestate.h"
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <string>
@@ -13,6 +14,7 @@
 
 // 前向声明
 class Player;
+class MapManager;
 
 class GameplayScreen : public BaseScreen {
 public:
@@ -63,7 +65,9 @@ private:
     
     // 输入缓冲区
     std::string chat_input_buffer_;
-    std::string game_input_buffer_;
+    
+    // 命令选项
+    std::vector<std::string> command_options_;  // 游戏命令选项列表
     
     // 游戏对象引用
     Game* game_;

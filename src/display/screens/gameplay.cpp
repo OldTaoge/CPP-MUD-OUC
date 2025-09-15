@@ -26,12 +26,6 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     // 创建UI组件
     chat_input_ = ftxui::Input(&chat_input_buffer_, "输入聊天消息...");
     game_input_ = ftxui::Input(&game_input_buffer_, "输入游戏命令...");
-    
-    // 删除顶部工具按钮和相关弹窗
-    // tool_button_ = ftxui::Button("工具", [this] { ShowToolOverlay(); });
-    // close_button_ = ftxui::Button("关闭", [this] { HideToolOverlay(); });
-    // for (size_t i = 0; i < tool_options_.size(); ++i) { ... }
-    // 工具叠加图层已集成到主组件中，不再需要单独的组件
 
     // 底部可点击操作按钮（鼠标/键盘）
     bottom_action_buttons_.clear();
@@ -74,7 +68,7 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         int header_h = 3;
         int bottom_h = 3;
         int main_h = std::max(5, dims.dimy - header_h - bottom_h);
-        int message_h = std::max(5, main_h * 6 / 10); // 为消息预留约 60% 的高度
+        int message_h = std::max(5, main_h * 6 / 10 - 1); // 为消息预留约 60% 的高度，减1行给队伍区域
 
         // 左侧：地图显示 - 优化美观度
         std::vector<ftxui::Element> left;
@@ -188,7 +182,9 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         if (game_messages_.empty()) {
             msg_lines.push_back(ftxui::text("暂无消息") | ftxui::color(ftxui::Color::GrayLight));
         } else {
-            for (const auto& m : game_messages_) {
+            // 为了保证新增消息在存在多行换行时也能立即可见，按时间倒序显示（最新在上）
+            for (auto it = game_messages_.rbegin(); it != game_messages_.rend(); ++it) {
+                const auto& m = *it;
                 // 为不同类型的消息添加不同颜色
                 auto styled_msg = ftxui::paragraph(m);
                 if (m.find("胜利") != std::string::npos || m.find("成功") != std::string::npos) {
@@ -240,7 +236,7 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         auto right_box = ftxui::vbox(right) | ftxui::border | ftxui::color(ftxui::Color::Magenta);
 
         // 按 7:3 比例分配宽度
-        int left_w = std::max(20, dims.dimx * 7 / 10);
+        int left_w = std::max(20, dims.dimx * 5 / 10);
         int right_w = std::max(10, dims.dimx - left_w);
         auto left_sized = left_box | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, left_w);
         auto right_sized = right_box | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, right_w);

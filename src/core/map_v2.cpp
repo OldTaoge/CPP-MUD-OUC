@@ -750,6 +750,185 @@ std::vector<std::string> MapManagerV2::renderFullMap() const {
     return fullMap;
 }
 
+// 以当前区块为中心，显示上下左右与之相邻的区块，仅显示区块名以表达位置关系
+std::vector<std::string> MapManagerV2::renderStitchedBlocks(int radius) const {
+    (void)radius; // 目前半径未使用，展示所有可达区块
+
+    auto center = getCurrentBlock();
+    if (!center) return {"当前区块不存在"};
+
+    // 通过扫描每个区块的出口，构建邻接关系
+    std::map<int, std::map<char, int>> adj; // id -> {dir -> neighborId}
+    auto add_edge = [&](int a, char dir, int b) {
+        adj[a][dir] = b;
+        // 补充逆向边
+        char rev = 'X';
+        if (dir == 'N') rev = 'S'; else if (dir == 'S') rev = 'N';
+        else if (dir == 'E') rev = 'W'; else if (dir == 'W') rev = 'E';
+        if (rev != 'X') {
+            // 只在未存在时写入
+            if (adj[b].find(rev) == adj[b].end()) adj[b][rev] = a;
+        }
+    };
+
+    for (const auto& kv : blocks_) {
+        int id = kv.first;
+        auto blk = kv.second;
+        if (!blk) continue;
+        for (int y = 0; y < MapBlock::BLOCK_SIZE; ++y) {
+            for (int x = 0; x < MapBlock::BLOCK_SIZE; ++x) {
+                if (!blk->isExit(x, y)) continue;
+                int tgt = blk->getExitTarget(x, y);
+                if (tgt < 0) continue;
+                if (blocks_.find(tgt) == blocks_.end()) continue;
+                auto ct = blk->getCell(x, y).type;
+                switch (ct) {
+                    case CellType::EXIT_NORTH: add_edge(id, 'N', tgt); break;
+                    case CellType::EXIT_SOUTH: add_edge(id, 'S', tgt); break;
+                    case CellType::EXIT_EAST:  add_edge(id, 'E', tgt); break;
+                    case CellType::EXIT_WEST:  add_edge(id, 'W', tgt); break;
+                    default: break;
+                }
+            }
+        }
+    }
+
+    // BFS 放置，当前为 (0,0)，放置所有可达区块
+    struct Pt { int x; int y; };
+    std::map<int, Pt> pos; // blockId -> 坐标
+    std::map<int, bool> vis;
+    std::vector<int> q;
+    int cId = currentBlockId_;
+    pos[cId] = {0, 0}; vis[cId] = true; q.push_back(cId);
+
+    auto step = [](const Pt& p, char dir) -> Pt {
+        if (dir == 'N') return {p.x, p.y - 1};
+        if (dir == 'S') return {p.x, p.y + 1};
+        if (dir == 'W') return {p.x - 1, p.y};
+        return {p.x + 1, p.y}; // 'E'
+    };
+
+    for (size_t i = 0; i < q.size(); ++i) {
+        int u = q[i];
+        auto it = adj.find(u);
+        if (it == adj.end()) continue;
+        for (const auto& kv2 : it->second) {
+            char dir = kv2.first;
+            int v = kv2.second;
+            if (vis[v]) continue;
+            if (!getBlock(v)) continue;
+            pos[v] = step(pos[u], dir);
+            vis[v] = true;
+            q.push_back(v);
+        }
+    }
+
+    // 生成网格（仅显示名字），统一每格宽度
+    int minX = 0, maxX = 0, minY = 0, maxY = 0;
+    for (const auto& p : pos) {
+        minX = std::min(minX, p.second.x);
+        maxX = std::max(maxX, p.second.x);
+        minY = std::min(minY, p.second.y);
+        maxY = std::max(maxY, p.second.y);
+    }
+
+    // 名称映射与最大宽
+    std::map<int, std::string> names;
+    size_t cellW = 0;
+    for (const auto& p : pos) {
+        auto b = getBlock(p.first);
+        std::string label = b ? b->getName() : "";
+        names[p.first] = label;
+        cellW = std::max(cellW, label.size());
+    }
+    // 适度留白
+    cellW = std::max<size_t>(cellW, 4);
+
+    auto centerMark = "*"; // 标记当前区块
+
+    auto padCenter = [](const std::string& s, size_t w) {
+        if (s.size() >= w) return s.substr(0, w);
+        size_t left = (w - s.size()) / 2;
+        size_t right = w - s.size() - left;
+        return std::string(left, ' ') + s + std::string(right, ' ');
+    };
+
+    std::vector<std::string> out;
+    out.push_back("=== 拼接区块（名称） ===");
+    out.push_back("");
+
+    // 渲染按行输出，隐藏无内容格，但保持基本对齐
+
+    for (int y = minY; y <= maxY; ++y) {
+        // 若不是第一行，输出垂直连接线
+        if (y > minY) {
+            std::string connLine;
+            for (int x = minX; x <= maxX; ++x) {
+                // 上下都有块且有连接则画竖线
+                int upId = -1, downId = -1;
+                for (const auto& kvp : pos) {
+                    if (kvp.second.x == x && kvp.second.y == y - 1) upId = kvp.first;
+                    if (kvp.second.x == x && kvp.second.y == y) downId = kvp.first;
+                }
+                bool has = false;
+                if (upId >= 0 && downId >= 0) {
+                    auto itUp = adj.find(upId);
+                    if (itUp != adj.end()) {
+                        auto itN = itUp->second.find('S');
+                        has = (itN != itUp->second.end() && itN->second == downId);
+                    }
+                }
+                connLine += has ? padCenter("|", cellW) : std::string(cellW, ' ');
+                if (x < maxX) connLine += "   "; // 横向间隔
+            }
+            // 仅当存在至少一个连接时输出此行
+            if (connLine.find('|') != std::string::npos) out.push_back(connLine);
+        }
+
+        // 名称行和横向连线
+        std::string nameLine;
+        for (int x = minX; x <= maxX; ++x) {
+            int idHere = -1;
+            for (const auto& kvp : pos) {
+                if (kvp.second.x == x && kvp.second.y == y) { idHere = kvp.first; break; }
+            }
+            std::string label;
+            if (idHere >= 0) {
+                label = names[idHere];
+                if (idHere == cId) label += centerMark;
+                nameLine += padCenter(label, cellW);
+            } else {
+                nameLine += std::string(cellW, ' ');
+            }
+
+            // 横向连接符（到右侧）
+            if (x < maxX) {
+                int rightId = -1;
+                for (const auto& kvp : pos) {
+                    if (kvp.second.x == x + 1 && kvp.second.y == y) { rightId = kvp.first; break; }
+                }
+                bool has = false;
+                if (idHere >= 0 && rightId >= 0) {
+                    auto itAdj = adj.find(idHere);
+                    if (itAdj != adj.end()) {
+                        auto itE = itAdj->second.find('E');
+                        has = (itE != itAdj->second.end() && itE->second == rightId);
+                    }
+                }
+                nameLine += has ? " - " : "   ";
+            }
+        }
+        // 如果整行为空（没有任何名称字符），则跳过
+        bool anyChar = false;
+        for (char ch : nameLine) { if (ch != ' ') { anyChar = true; break; } }
+        if (anyChar) out.push_back(nameLine);
+    }
+
+    out.push_back("");
+    out.push_back("* 为当前位置");
+    return out;
+}
+
 std::string MapManagerV2::getCurrentCellInfo() const {
     auto currentBlock = getCurrentBlock();
     if (currentBlock) {

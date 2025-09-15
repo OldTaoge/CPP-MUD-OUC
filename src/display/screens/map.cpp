@@ -25,30 +25,16 @@ MapScreen::MapScreen(Game* game) : game_(game), player_x_(0), player_y_(0) {
     // 创建UI组件
     map_display_ = ftxui::Renderer([this] {
         std::vector<ftxui::Element> elements;
-        
         // 地图标题
-        elements.push_back(ftxui::text("=== 游戏地图 ===") | ftxui::bold | ftxui::center);
+        elements.push_back(ftxui::text("=== 全部地图 ===") | ftxui::bold | ftxui::center);
         elements.push_back(ftxui::separator());
-        
-        // 添加视图切换提示
-        elements.push_back(ftxui::text("按 TAB 切换视图: 当前区块 / 完整地图"));
-        elements.push_back(ftxui::separator());
-        
         // 地图显示
         for (const auto& line : map_lines_) {
             elements.push_back(ftxui::text(line));
         }
-        
-        // 图例
+        // 说明
         elements.push_back(ftxui::separator());
-        if (show_full_map_) {
-            elements.push_back(ftxui::text("完整地图模式 - 显示所有区块状态和连接关系"));
-        } else {
-            elements.push_back(ftxui::text("当前区块模式 - 显示9x9区块详细地图"));
-            elements.push_back(ftxui::text("图例: P=玩家 #=墙壁 .=空地 I=物品 A=安伯 K=凯亚 S=神像 M=怪物"));
-            elements.push_back(ftxui::text("出口: ^=北 v=南 <=西 >=东"));
-        }
-        
+        elements.push_back(ftxui::text("* 为当前位置，使用连接线表示相邻关系"));
         return ftxui::vbox(elements);
     });
     
@@ -110,10 +96,7 @@ MapScreen::MapScreen(Game* game) : game_(game), player_x_(0), player_y_(0) {
     std::vector<ftxui::Component> left_components;
     left_components.push_back(map_display_);
     
-    std::vector<ftxui::Component> bottom_components;
-    bottom_components.push_back(player_info_);
-    bottom_components.push_back(interaction_menu_);
-    left_components.push_back(ftxui::Container::Horizontal(bottom_components));
+    // 只保留地图显示
     
     // 右侧组件
     std::vector<ftxui::Component> right_components;
@@ -127,43 +110,8 @@ MapScreen::MapScreen(Game* game) : game_(game), player_x_(0), player_y_(0) {
     component_ = ftxui::Container::Horizontal(horizontal_components);
     
     // 设置键盘事件处理
-    component_ |= ftxui::CatchEvent([this](ftxui::Event event) {
-        if (show_interaction_menu_) {
-            if (event == ftxui::Event::ArrowUp) {
-                selected_interaction_ = std::max(0, selected_interaction_ - 1);
-                return true;
-            } else if (event == ftxui::Event::ArrowDown) {
-                selected_interaction_ = std::min((int)interaction_options_.size() - 1, selected_interaction_ + 1);
-                return true;
-            } else if (event == ftxui::Event::Return) {
-                HandleInteractionOption(selected_interaction_);
-                return true;
-            } else if (event == ftxui::Event::Escape) {
-                HideInteractionMenu();
-                return true;
-            }
-        } else {
-            // 移动控制
-            if (event == ftxui::Event::Character('w') || event == ftxui::Event::ArrowUp) {
-                HandleMovement(0, -1);
-                return true;
-            } else if (event == ftxui::Event::Character('s') || event == ftxui::Event::ArrowDown) {
-                HandleMovement(0, 1);
-                return true;
-            } else if (event == ftxui::Event::Character('a') || event == ftxui::Event::ArrowLeft) {
-                HandleMovement(-1, 0);
-                return true;
-            } else if (event == ftxui::Event::Character('d') || event == ftxui::Event::ArrowRight) {
-                HandleMovement(1, 0);
-                return true;
-            } else if (event == ftxui::Event::Character(' ')) {
-                HandleInteraction();
-                return true;
-            } else if (event == ftxui::Event::Tab) {
-                ToggleMapView();
-                return true;
-            }
-        }
+    // 去除交互与移动，保持只读
+    component_ |= ftxui::CatchEvent([this](ftxui::Event) {
         return false;
     });
 }
@@ -184,11 +132,8 @@ void MapScreen::UpdateMapData(const Game& game) {
         const auto& mapManager = game.getMapManager();
         std::vector<std::string> newMapLines;
         
-        if (show_full_map_) {
-            newMapLines = mapManager.renderFullMap();
-        } else {
-            newMapLines = mapManager.renderCurrentBlock();
-        }
+        // 只显示全部地图（拼接名称视图）
+        newMapLines = mapManager.renderStitchedBlocks(1);
         
         // 确保地图数据有效
         if (!newMapLines.empty()) {
@@ -338,14 +283,6 @@ void MapScreen::RefreshMapDisplay() {
 }
 
 void MapScreen::ToggleMapView() {
-    show_full_map_ = !show_full_map_;
-    
-    if (show_full_map_) {
-        AddMapMessage("切换到完整地图视图");
-    } else {
-        AddMapMessage("切换到当前区块视图");
-    }
-    
-    // 立即刷新地图显示
+    // 已移除视图切换，保持为完整地图视图
     RefreshMapDisplay();
 }

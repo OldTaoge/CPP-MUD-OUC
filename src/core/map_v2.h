@@ -261,6 +261,9 @@ public:
     std::string getCurrentCellInfo() const;
     std::string getBlockInfo() const;
     std::vector<std::string> renderFullMap() const;
+    // 拼接区块渲染：以当前区块为中心，按出口方向拼接相邻区块
+    // radius 表示拼接的“环数”，1 表示当前区块及上下左右相邻的区块
+    std::vector<std::string> renderStitchedBlocks(int radius = 1) const;
     
     // 进度管理
     int getCompletedBlocksCount() const;

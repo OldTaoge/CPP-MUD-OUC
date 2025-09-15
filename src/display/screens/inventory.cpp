@@ -1,6 +1,7 @@
 #include "inventory.hpp"
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
+#include <ftxui/dom/elements.hpp>
 #include <sstream>
 #include <algorithm>
 #include "../../utils/utils.hpp"
@@ -16,9 +17,13 @@ InventoryScreen::InventoryScreen(Game* game)
     CreateItemDetails();
     CreateFilterButtons();
     CreateActionButtons();
+    CreateSearchInput();
+
+    // 首次进入时同步一次筛选结果，确保有选中项与物品名
+    UpdateItemList();
 
     // 队伍成员选择组件
-    auto memberSelection = Renderer([this] {
+    auto memberSelectionCore = Renderer([this] {
         if (!showMemberSelection_) {
             return text("") | size(WIDTH, EQUAL, 0) | size(HEIGHT, EQUAL, 0);
         }
@@ -54,34 +59,93 @@ InventoryScreen::InventoryScreen(Game* game)
 
         return vbox(std::move(memberElements)) | border | size(WIDTH, GREATER_THAN, 50);
     });
+    memberSelection_ = CatchEvent(memberSelectionCore, [this](Event e) {
+        if (!showMemberSelection_) return false;
+        auto teamMembers = game_->getPlayer().getTeamMembers();
+        int count = static_cast<int>(teamMembers.size());
+        if (count == 0) return false;
+
+        if (e == Event::ArrowUp) {
+            selectedMemberIndex_ = (selectedMemberIndex_ - 1 + count) % count;
+            return true;
+        }
+        if (e == Event::ArrowDown) {
+            selectedMemberIndex_ = (selectedMemberIndex_ + 1) % count;
+            return true;
+        }
+        if (e == Event::Escape) {
+            showMemberSelection_ = false;
+            return true;
+        }
+        if (e == Event::Return) {
+            // 直接在此执行装备确认逻辑
+            if (!currentItems_.empty() && selectedIndex_ >= 0 && selectedIndex_ < static_cast<int>(currentItems_.size())) {
+                const auto& item = currentItems_[selectedIndex_];
+                bool success = false;
+                if (item->getType() == ItemType::WEAPON) {
+                    success = game_->getPlayer().equipWeaponForMember(selectedMemberIndex_, selectedItemName_);
+                } else if (item->getType() == ItemType::ARTIFACT) {
+                    success = game_->getPlayer().equipArtifactForMember(selectedMemberIndex_, selectedItemName_);
+                }
+                if (success) {
+                    showMemberSelection_ = false;
+                    UpdateItemList();
+                }
+            }
+            return true;
+        }
+        return false;
+    });
 
     // 创建主布局
     auto horizontal_container = Container::Horizontal({itemList_, itemDetails_});
     
     auto main_layout = Container::Vertical({
         filterButtons_,
+        searchInput_,
         horizontal_container,
-        memberSelection,
+        memberSelection_,
         actionButtons_
     });
 
     auto renderer = Renderer(main_layout, [this, main_layout] {
         return vbox({
-            text("🎒 背包系统") | bold | hcenter,
+            text("🎒 背包系统") | bold | hcenter | color(Color::Cyan),
             separator(),
             hbox({
-                text("筛选: " + filterType_) | color(Color::Blue),
+                text("当前筛选: ") | dim, text(filterType_) | color(Color::Blue) | bold,
                 filler(),
-                text("搜索: " + searchKeyword_) | color(Color::Green),
-                filler(),
-                text(GetInventoryStats()) | color(Color::Yellow)
+                text("容量: ") | dim, text(GetInventoryStats()) | color(Color::Yellow)
             }),
+            separator(),
+            // 状态提示区域
+            (status_message_.empty() ? text("") : text(status_message_) | color(Color::Red)) ,
             separator(),
             main_layout->Render() | flex
         }) | border;
     });
 
     component_ = renderer;
+    // 全局按键转发到物品列表，保证可用性
+    component_ = CatchEvent(component_, [this](Event e) {
+        // 成员选择弹窗打开时，优先把上下/确认/取消转给成员选择
+        if (showMemberSelection_) {
+            if (e == Event::ArrowUp || e == Event::ArrowDown || e == Event::Escape || e == Event::Return) {
+                if (memberSelection_) return memberSelection_->OnEvent(e);
+                return true;
+            }
+            return false;
+        }
+        if (e == Event::ArrowUp || e == Event::ArrowDown ||
+            e == Event::PageUp || e == Event::PageDown ||
+            e == Event::Home || e == Event::End ||
+            e == Event::Return) {
+            if (itemList_) {
+                return itemList_->OnEvent(e);
+            }
+        }
+        return false;
+    });
 }
 
 Component InventoryScreen::GetComponent() {
@@ -142,7 +206,7 @@ std::vector<std::shared_ptr<Item>> InventoryScreen::GetFilteredItems() const {
 }
 
 void InventoryScreen::CreateItemList() {
-    auto item_list_renderer = Renderer([this] {
+    auto item_list_renderer_core = Renderer([this] {
         Elements item_elements;
         auto filteredItems = GetFilteredItems();
 
@@ -153,7 +217,25 @@ void InventoryScreen::CreateItemList() {
                 const auto& item = filteredItems[i];
                 std::string displayText = GetItemDisplayText(item);
 
-                auto item_element = text(displayText);
+                // 稀有度着色与类型图标
+                Color rarity_color = Color::White;
+                auto rarity = item->getRarityString();
+                if (rarity.find("传说") != std::string::npos || rarity.find("5") != std::string::npos) rarity_color = Color::Yellow;
+                else if (rarity.find("史诗") != std::string::npos || rarity.find("4") != std::string::npos) rarity_color = Color::Magenta;
+                else if (rarity.find("稀有") != std::string::npos || rarity.find("3") != std::string::npos) rarity_color = Color::Blue;
+                else if (rarity.find("精良") != std::string::npos || rarity.find("2") != std::string::npos) rarity_color = Color::Green;
+                else rarity_color = Color::GrayLight;
+
+                std::string icon = "";
+                switch (item->getType()) {
+                    case ItemType::WEAPON: icon = "🗡 "; break;
+                    case ItemType::ARTIFACT: icon = "🔮 "; break;
+                    case ItemType::FOOD: icon = "🍗 "; break;
+                    case ItemType::MATERIAL: icon = "🧱 "; break;
+                    default: break;
+                }
+
+                auto item_element = text(icon + displayText) | color(rarity_color);
                 if (i == static_cast<size_t>(selectedIndex_)) {
                     item_element = item_element | inverted;
                 }
@@ -162,35 +244,64 @@ void InventoryScreen::CreateItemList() {
             }
         }
 
-        return vbox(std::move(item_elements)) | frame | size(WIDTH, GREATER_THAN, 30);
+        return window(text("物品列表"), vbox(std::move(item_elements)) | frame | size(WIDTH, GREATER_THAN, 30));
     });
+    itemList_ = CatchEvent(item_list_renderer_core, [this](Event e) {
+        auto items = GetFilteredItems();
+        int n = static_cast<int>(items.size());
+        if (n == 0) return false;
 
-    itemList_ = item_list_renderer;
+        if (e == Event::ArrowUp) {
+            selectedIndex_ = (selectedIndex_ - 1 + n) % n;
+        } else if (e == Event::ArrowDown) {
+            selectedIndex_ = (selectedIndex_ + 1) % n;
+        } else if (e == Event::PageUp) {
+            selectedIndex_ = std::max(0, selectedIndex_ - 5);
+        } else if (e == Event::PageDown) {
+            selectedIndex_ = std::min(n - 1, selectedIndex_ + 5);
+        } else if (e == Event::Home) {
+            selectedIndex_ = 0;
+        } else if (e == Event::End) {
+            selectedIndex_ = n - 1;
+        } else if (e == Event::Return) {
+            // 查看详情
+            if (selectedIndex_ >= 0 && selectedIndex_ < n) {
+                selectedItemName_ = items[selectedIndex_]->getName();
+                showItemDetails_ = true;
+            }
+        } else {
+            return false;
+        }
+        // 同步当前选中名称，便于动作按钮使用
+        if (selectedIndex_ >= 0 && selectedIndex_ < n) {
+            selectedItemName_ = items[selectedIndex_]->getName();
+        }
+        return true;
+    });
 }
 
 void InventoryScreen::CreateItemDetails() {
     itemDetails_ = Renderer([this] {
-        if (!showItemDetails_ || currentItems_.empty() ||
-            selectedIndex_ >= static_cast<int>(currentItems_.size())) {
-            return vbox({
-                text("请选择物品") | dim | hcenter,
-                text(""),
-                text("使用方向键选择物品") | dim | hcenter,
-                text("按Enter查看详情") | dim | hcenter
-            }) | size(WIDTH, GREATER_THAN, 40);
+        auto filteredItems = GetFilteredItems();
+        if (filteredItems.empty()) {
+            return window(text("物品详情"), vbox({
+                text("背包为空") | dim | hcenter,
+            }) | size(WIDTH, GREATER_THAN, 40));
         }
 
-        const auto& item = currentItems_[selectedIndex_];
-        Elements details;
+        int index = selectedIndex_;
+        if (index < 0) index = 0;
+        if (index >= static_cast<int>(filteredItems.size())) index = static_cast<int>(filteredItems.size()) - 1;
+        const auto& item = filteredItems[index];
 
-        details.push_back(text("📦 物品详情") | bold | hcenter);
+        Elements details;
+        details.push_back(text("📦 物品详情") | bold | hcenter | color(Color::Cyan));
         details.push_back(separator());
         details.push_back(text("名称: " + item->getName()));
         details.push_back(text("类型: " + item->getTypeString()));
         details.push_back(text("稀有度: " + item->getRarityString()));
         details.push_back(text("数量: " + std::to_string(item->getQuantity())));
 
-        // 根据物品类型显示额外信息
         std::vector<std::string> detailLines;
         std::string detailedInfo = item->getDetailedInfo();
         std::stringstream ss(detailedInfo);
@@ -201,11 +312,11 @@ void InventoryScreen::CreateItemDetails() {
             }
         }
 
-        for (const auto& line : detailLines) {
-            details.push_back(text(line));
+        for (const auto& dl : detailLines) {
+            details.push_back(text(dl));
         }
 
-        return vbox(std::move(details)) | border | size(WIDTH, GREATER_THAN, 40);
+        return window(text("物品详情"), vbox(std::move(details)) | size(WIDTH, GREATER_THAN, 40));
     });
 }
 
@@ -222,7 +333,11 @@ void InventoryScreen::CreateFilterButtons() {
         buttons.push_back(button);
     }
 
-    filterButtons_ = Container::Horizontal(buttons);
+    // 渲染为带标题的窗口
+    auto container = Container::Horizontal(buttons);
+    filterButtons_ = Renderer(container, [this, container] {
+        return window(text("筛选"), container->Render());
+    });
 }
 
 void InventoryScreen::CreateActionButtons() {
@@ -230,39 +345,68 @@ void InventoryScreen::CreateActionButtons() {
 
     // 使用物品按钮
     auto useButton = Button("使用物品", [this] {
-        if (!selectedItemName_.empty()) {
-            auto result = game_->getPlayer().useItem(selectedItemName_);
-            if (result == InventoryResult::SUCCESS) {
+        auto items = GetFilteredItems();
+        int n = static_cast<int>(items.size());
+        if (n == 0) return;
+        int idx = std::clamp(selectedIndex_, 0, n - 1);
+        selectedItemName_ = items[idx]->getName();
+        auto result = game_->getPlayer().useItem(selectedItemName_);
+        switch (result) {
+            case InventoryResult::SUCCESS:
+                status_message_ = "使用成功";
                 UpdateItemList();
-            }
+                break;
+            case InventoryResult::INVALID_OPERATION:
+                status_message_ = "该物品不能被使用";
+                break;
+            case InventoryResult::NOT_FOUND:
+                status_message_ = "未找到该物品";
+                break;
+            case InventoryResult::INSUFFICIENT_QUANTITY:
+                status_message_ = "数量不足，无法使用";
+                break;
+            case InventoryResult::FULL:
+                status_message_ = "背包已满"; // 理论上不出现在使用时
+                break;
         }
     });
     buttons.push_back(useButton);
 
     // 装备物品按钮
     auto equipButton = Button("装备", [this] {
-        if (!selectedItemName_.empty() && !currentItems_.empty() &&
-            selectedIndex_ < static_cast<int>(currentItems_.size())) {
-            const auto& item = currentItems_[selectedIndex_];
+        auto items = GetFilteredItems();
+        int n = static_cast<int>(items.size());
+        if (n == 0) return;
+        int idx = std::clamp(selectedIndex_, 0, n - 1);
+        const auto& item = items[idx];
+        selectedItemName_ = item->getName();
 
-            if (showMemberSelection_) {
-                // 确认装备到选中的成员
-                bool success = false;
-                if (item->getType() == ItemType::WEAPON) {
-                    success = game_->getPlayer().equipWeaponForMember(selectedMemberIndex_, selectedItemName_);
-                } else if (item->getType() == ItemType::ARTIFACT) {
-                    success = game_->getPlayer().equipArtifactForMember(selectedMemberIndex_, selectedItemName_);
-                }
+        if (item->getType() != ItemType::WEAPON && item->getType() != ItemType::ARTIFACT) {
+            status_message_ = "该物品不能被装备";
+            return;
+        }
 
-                if (success) {
-                    showMemberSelection_ = false;
-                    UpdateItemList();
-                }
-            } else {
-                // 开始选择队伍成员
-                showMemberSelection_ = true;
-                selectedMemberIndex_ = 0; // 重置选择
+        if (showMemberSelection_) {
+            // 确认装备到选中的成员
+            bool success = false;
+            if (item->getType() == ItemType::WEAPON) {
+                success = game_->getPlayer().equipWeaponForMember(selectedMemberIndex_, selectedItemName_);
+            } else if (item->getType() == ItemType::ARTIFACT) {
+                success = game_->getPlayer().equipArtifactForMember(selectedMemberIndex_, selectedItemName_);
             }
+
+            if (success) {
+                showMemberSelection_ = false;
+                status_message_ = "装备成功";
+                UpdateItemList();
+            } else {
+                status_message_ = "装备失败";
+            }
+        } else {
+            // 开始选择队伍成员
+            showMemberSelection_ = true;
+            selectedMemberIndex_ = 0; // 重置选择
+            status_message_.clear();
         }
     });
     buttons.push_back(equipButton);
@@ -292,7 +436,23 @@ void InventoryScreen::CreateActionButtons() {
     });
     buttons.push_back(backButton);
 
-    actionButtons_ = Container::Horizontal(buttons);
+    {
+        auto inner = Container::Horizontal(buttons);
+        actionButtons_ = Renderer(inner, [inner] { return window(text("操作"), inner->Render()); });
+    }
+}
+
+void InventoryScreen::CreateSearchInput() {
+    // 输入搜索关键字，回车立即生效
+    auto input = Input(&searchKeyword_, "输入搜索关键字...（回车确认）");
+    auto core = CatchEvent(input, [this](Event e) {
+        if (e == Event::Return) {
+            HandleSearch(searchKeyword_);
+            return true;
+        }
+        return false;
+    });
+    searchInput_ = Renderer(core, [core] { return window(text("搜索"), core->Render()); });
 }
 
 std::string InventoryScreen::GetItemDisplayText(const std::shared_ptr<Item>& item) const {

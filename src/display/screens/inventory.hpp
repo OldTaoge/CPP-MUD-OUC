@@ -26,12 +26,15 @@ private:
     int selectedMemberIndex_;
     bool showItemDetails_;
     bool showMemberSelection_;
+    std::string status_message_;
 
     // UI 组件
     ftxui::Component itemList_;
     ftxui::Component itemDetails_;
     ftxui::Component filterButtons_;
     ftxui::Component actionButtons_;
+    ftxui::Component searchInput_;
+    ftxui::Component memberSelection_;
 
     // 初始化函数
     void InitializeItems();
@@ -40,6 +43,7 @@ private:
     void CreateItemDetails();
     void CreateFilterButtons();
     void CreateActionButtons();
+    void CreateSearchInput();
 
     // 事件处理
     void HandleItemSelection(int index);

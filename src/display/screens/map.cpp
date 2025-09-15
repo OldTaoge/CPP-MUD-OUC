@@ -24,36 +24,111 @@ MapScreen::MapScreen(Game* game) : game_(game), player_x_(0), player_y_(0) {
     
     // 创建UI组件
     map_display_ = ftxui::Renderer([this] {
-        std::vector<ftxui::Element> elements;
-        // 地图标题
-        elements.push_back(ftxui::text("=== 全部地图 ===") | ftxui::bold | ftxui::center);
-        elements.push_back(ftxui::separator());
-        // 地图显示
-        for (const auto& line : map_lines_) {
-            elements.push_back(ftxui::text(line));
+        std::vector<ftxui::Element> left;
+
+        // 地图标题（保持为“全部地图”）
+        left.push_back(ftxui::text("=== 全部地图 ===") | ftxui::bold | ftxui::center | ftxui::color(ftxui::Color::Cyan));
+        left.push_back(ftxui::separator());
+
+        // 可选：当前位置/区块名（如果有）
+        std::string current_block_name = "";
+        if (game_) {
+            auto current_block = game_->getMapManager().getCurrentBlock();
+            if (current_block) {
+                current_block_name = current_block->getName();
+            }
         }
-        // 说明
-        elements.push_back(ftxui::separator());
-        elements.push_back(ftxui::text("* 为当前位置，使用连接线表示相邻关系"));
-        return ftxui::vbox(elements);
+        if (!current_block_name.empty()) {
+            left.push_back(ftxui::text("当前位置: " + current_block_name) | ftxui::color(ftxui::Color::Green));
+            left.push_back(ftxui::separator());
+        }
+
+        // 地图内容 - 使用等宽布局与元素着色
+        std::vector<ftxui::Element> map_content;
+        for (const auto& line : map_lines_) {
+            // 如果包含非 ASCII（如中文区块名），整行渲染以避免字符宽度导致的错位
+            bool has_non_ascii = std::any_of(line.begin(), line.end(), [](char ch) {
+                return static_cast<unsigned char>(ch) >= 128;
+            });
+
+            bool is_map_grid = line.find("=== ") == std::string::npos &&
+                               line.find(": ") == std::string::npos &&
+                               line.find("P =") == std::string::npos &&
+                               line.find("I =") == std::string::npos &&
+                               line.find("N =") == std::string::npos &&
+                               line.find("S =") == std::string::npos &&
+                               line.find("M =") == std::string::npos &&
+                               line.find("^v>< =") == std::string::npos &&
+                               line.find("# =") == std::string::npos &&
+                               line.find(". =") == std::string::npos &&
+                               line.length() > 5;
+
+            if (has_non_ascii) {
+                // 整行渲染，保持对齐
+                map_content.push_back(ftxui::text(line));
+            } else if (is_map_grid) {
+                std::vector<ftxui::Element> styled_chars;
+                styled_chars.reserve(line.size());
+                for (size_t i = 0; i < line.length(); ++i) {
+                    char c = line[i];
+                    ftxui::Element ch = ftxui::text(std::string(1, c));
+                    if (c == '+' || c == '-' || c == '|') {
+                        ch = ch | ftxui::color(ftxui::Color::Cyan) | ftxui::bold;
+                    } else if (c == 'P') {
+                        ch = ch | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Blue) | ftxui::bold;
+                    } else if (c == 'I') {
+                        ch = ch | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Green) | ftxui::bold;
+                    } else if (c == 'N') {
+                        ch = ch | ftxui::color(ftxui::Color::Black) | ftxui::bgcolor(ftxui::Color::Yellow) | ftxui::bold;
+                    } else if (c == 'S') {
+                        ch = ch | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Magenta);
+                    } else if (c == 'M') {
+                        ch = ch | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Red) | ftxui::bold;
+                    } else if (c == '^' || c == 'v' || c == '<' || c == '>') {
+                        ch = ch | ftxui::color(ftxui::Color::Yellow) | ftxui::bold;
+                    } else if (c == '#') {
+                        ch = ch | ftxui::color(ftxui::Color::GrayDark);
+                    } else if (c == '.') {
+                        ch = ch | ftxui::color(ftxui::Color::GrayLight);
+                    }
+                    styled_chars.push_back(ch);
+                }
+                map_content.push_back(ftxui::hbox(styled_chars));
+            } else if (line.find("=== 地图图例 ===") != std::string::npos) {
+                map_content.push_back(ftxui::text(line) | ftxui::color(ftxui::Color::Yellow) | ftxui::bold);
+            } else if (line.find("P =") != std::string::npos || line.find("I =") != std::string::npos ||
+                       line.find("N =") != std::string::npos || line.find("S =") != std::string::npos ||
+                       line.find("M =") != std::string::npos || line.find("^v>< =") != std::string::npos ||
+                       line.find("# =") != std::string::npos || line.find(". =") != std::string::npos) {
+                map_content.push_back(ftxui::text(line) | ftxui::color(ftxui::Color::GrayLight));
+            } else {
+                map_content.push_back(ftxui::text(line) | ftxui::color(ftxui::Color::Green));
+            }
+        }
+
+        auto map_box = ftxui::vbox(map_content) | ftxui::border | ftxui::color(ftxui::Color::Green);
+        left.push_back(map_box);
+
+        // 区块信息
+        if (!current_block_info_.empty()) {
+            left.push_back(ftxui::separator());
+            left.push_back(ftxui::text("[位置] 位置信息") | ftxui::bold | ftxui::color(ftxui::Color::Yellow));
+            left.push_back(ftxui::paragraph(current_block_info_) | ftxui::color(ftxui::Color::White));
+        }
+
+        return ftxui::vbox(left) | ftxui::border | ftxui::color(ftxui::Color::Blue);
     });
     
     player_info_ = ftxui::Renderer([this] {
         std::vector<ftxui::Element> elements;
-        
-        elements.push_back(ftxui::text("=== 玩家信息 ===") | ftxui::bold);
+
+        elements.push_back(ftxui::text("玩家信息") | ftxui::bold | ftxui::color(ftxui::Color::Cyan));
+        elements.push_back(ftxui::separator());
         elements.push_back(ftxui::text("姓名: " + player_name_));
         elements.push_back(ftxui::text("位置: (" + std::to_string(player_x_) + ", " + std::to_string(player_y_) + ")"));
         elements.push_back(ftxui::text("状态: " + player_status_));
-        elements.push_back(ftxui::separator());
-        
-        // 当前区块信息
-        if (!current_block_info_.empty()) {
-            elements.push_back(ftxui::text("=== 当前位置 ===") | ftxui::bold);
-            elements.push_back(ftxui::text(current_block_info_));
-        }
-        
-        return ftxui::vbox(elements);
+
+        return ftxui::vbox(elements) | ftxui::border | ftxui::color(ftxui::Color::Yellow);
     });
     
     // 交互菜单
@@ -100,6 +175,7 @@ MapScreen::MapScreen(Game* game) : game_(game), player_x_(0), player_y_(0) {
     
     // 右侧组件
     std::vector<ftxui::Component> right_components;
+    right_components.push_back(player_info_);
     right_components.push_back(close_button_);
     
     // 主布局

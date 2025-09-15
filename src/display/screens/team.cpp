@@ -7,13 +7,9 @@
 #include <sstream>
 
 TeamScreen::TeamScreen(Game* game) : game_(game) {
-    new_member_name_buffer_ = "";
     status_message_ = "队伍配置";
     active_count_ = 0;
     max_active_count_ = Player::MAX_ACTIVE_MEMBERS;
-    
-    // 创建输入组件
-    new_member_name_input_ = ftxui::Input(&new_member_name_buffer_, "输入新成员姓名...");
     
     // 创建返回按钮
     back_button_ = ftxui::Button("返回游戏", [this] {
@@ -46,7 +42,8 @@ TeamScreen::TeamScreen(Game* game) : game_(game) {
         if (member_info_.empty()) {
             elements.push_back(ftxui::text("暂无队伍成员") | ftxui::color(ftxui::Color::Red));
         } else {
-            for (const auto & member : member_info_) {
+            for (size_t i = 0; i < member_info_.size(); ++i) {
+                const auto& member = member_info_[i];
                 std::vector<ftxui::Element> member_row;
                 
                 // 成员基本信息
@@ -76,7 +73,11 @@ TeamScreen::TeamScreen(Game* game) : game_(game) {
                 }
                 member_row.push_back(status_element);
                 
-                elements.push_back(ftxui::hbox(member_row) | ftxui::border);
+                auto row_box = ftxui::hbox(member_row) | ftxui::border;
+                if ((int)i == selected_member_) {
+                    row_box = row_box | ftxui::inverted;
+                }
+                elements.push_back(row_box);
                 
                 // 装备信息
                 if (!member.weapon.empty() || !member.artifact.empty()) {
@@ -88,7 +89,11 @@ TeamScreen::TeamScreen(Game* game) : game_(game) {
                         equip_row.push_back(ftxui::text("圣遗物: " + member.artifact) | ftxui::color(ftxui::Color::Magenta));
                     }
                     if (!equip_row.empty()) {
-                        elements.push_back(ftxui::hbox(equip_row));
+                        auto equip_line = ftxui::hbox(equip_row);
+                        if ((int)i == selected_member_) {
+                            equip_line = equip_line | ftxui::inverted;
+                        }
+                        elements.push_back(equip_line);
                     }
                 }
                 
@@ -104,10 +109,13 @@ TeamScreen::TeamScreen(Game* game) : game_(game) {
                     button_row.push_back(ftxui::text("[2] 切换"));
                 }
                 
-                // 装备按钮
-                button_row.push_back(ftxui::text("[3] 装备"));
+                // 去除装备按钮（仅保留详情显示）
                 
-                elements.push_back(ftxui::hbox(button_row) | ftxui::color(ftxui::Color::GrayLight));
+                auto buttons = ftxui::hbox(button_row) | ftxui::color(ftxui::Color::GrayLight);
+                if ((int)i == selected_member_) {
+                    buttons = buttons | ftxui::inverted;
+                }
+                elements.push_back(buttons);
                 elements.push_back(ftxui::separator());
             }
         }
@@ -115,8 +123,7 @@ TeamScreen::TeamScreen(Game* game) : game_(game) {
         // 操作说明
         elements.push_back(ftxui::separator());
         elements.push_back(ftxui::text("操作说明:") | ftxui::bold);
-        elements.push_back(ftxui::text("↑↓ 选择成员  [B] 返回游戏"));
-        elements.push_back(ftxui::text("数字键进行对应操作"));
+        elements.push_back(ftxui::text("↑↓ 选择成员  [1] 上/下场  [2] 切换  [B] 返回"));
         
         return ftxui::vbox(elements) | ftxui::border;
     });
@@ -139,9 +146,6 @@ TeamScreen::TeamScreen(Game* game) : game_(game) {
                 return true;
             } else if (event == ftxui::Event::Character('2')) {
                 HandleSwitchToMember(selected_member_);
-                return true;
-            } else if (event == ftxui::Event::Character('3')) {
-                HandleEquipMember(selected_member_);
                 return true;
             }
         return false;
@@ -232,44 +236,7 @@ void TeamScreen::HandleMemberToggle(int index) {
     }
 }
 
-void TeamScreen::HandleAddMember() {
-    if (!game_) {
-        status_message_ = "游戏对象未初始化";
-        return;
-    }
-    
-    if (new_member_name_buffer_.empty()) {
-        status_message_ = "请输入成员姓名";
-        return;
-    }
-    
-    // 检查重名
-    const auto& teamMembers = game_->getPlayer().getTeamMembers();
-    for (const auto& member : teamMembers) {
-        if (member->getName() == new_member_name_buffer_) {
-            status_message_ = "已存在同名成员";
-            return;
-        }
-    }
-    
-    // 添加新成员
-    auto& player = game_->getPlayer();
-    player.addTeamMember(new_member_name_buffer_, 1);
-    
-    status_message_ = "成功添加队友: " + new_member_name_buffer_;
-    new_member_name_buffer_.clear();
-
-    RefreshTeamData();
-}
-
-void TeamScreen::HandleEquipMember(int memberIndex) {
-    if (!game_ || memberIndex < 0 || memberIndex >= member_info_.size()) {
-        status_message_ = "无效的成员索引";
-        return;
-    }
-    
-    status_message_ = "装备管理功能暂未实现，请在背包界面为成员装备物品";
-}
+// 装备操作已从队伍界面移除
 
 void TeamScreen::HandleSwitchToMember(int memberIndex) {
     if (!game_ || memberIndex < 0 || memberIndex >= member_info_.size()) {

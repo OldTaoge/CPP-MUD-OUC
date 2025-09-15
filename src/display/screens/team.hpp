@@ -23,21 +23,14 @@ public:
 private:
     void RefreshTeamData();
     void HandleMemberToggle(int index);
-    void HandleAddMember();
-    void HandleEquipMember(int memberIndex);
+    // 添加成员入口已移除
     void HandleSwitchToMember(int memberIndex);
     
     // UI组件
     ftxui::Component component_;
     std::vector<ftxui::Component> member_toggle_buttons_;
-    std::vector<ftxui::Component> member_equip_buttons_;
     std::vector<ftxui::Component> member_switch_buttons_;
-    ftxui::Component add_member_button_;
     ftxui::Component back_button_;
-    
-    // 输入组件
-    ftxui::Component new_member_name_input_;
-    std::string new_member_name_buffer_;
     
     // 数据存储
     struct MemberDisplayInfo {

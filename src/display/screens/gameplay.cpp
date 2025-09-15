@@ -45,6 +45,9 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     bottom_action_buttons_.push_back(ftxui::Button("保存", [this] {
         if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SAVE_GAME));
     }));
+    bottom_action_buttons_.push_back(ftxui::Button("退出", [this] {
+        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "MainMenu"));
+    }));
 
     // 顶栏：仅保留中间标题和右侧状态
     auto header_renderer = ftxui::Renderer([this] {
@@ -255,7 +258,7 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         }
         
         // 操作提示 - 使用更美观的样式
-        auto help = ftxui::text("W/A/S/D 移动  空格 交互  Q/E 切换队友") |
+        auto help = ftxui::text("W/A/S/D 移动  空格 交互  Q/E 切换队友  Esc 退出") |
                    ftxui::color(ftxui::Color::GrayLight);
         
         auto bar = ftxui::hbox({ ftxui::hbox(btns), ftxui::filler(), help }) | 
@@ -290,6 +293,11 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
             return true;
         } else if (event == ftxui::Event::Character('e') || event == ftxui::Event::Character('E')) {
             HandleGameCommand("switch_prev_member");
+            return true;
+        } else if (event == ftxui::Event::Escape) {
+            if (navigation_callback_) {
+                navigation_callback_(NavigationRequest(NavigationAction::QUIT_GAME));
+            }
             return true;
         }
         return false;

@@ -24,8 +24,6 @@ add_executable(CPP_MUD_OUC core/main.cpp
         display/window_size_checker.hpp
         storage/storage.cpp
         storage/storage.h
-        interaction/interaction.cpp
-        interaction/interaction.h
         display/screens/mainmenu.cpp
         display/screens/mainmenu.hpp
         display/screens/inventory.cpp

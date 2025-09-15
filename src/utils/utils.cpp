@@ -15,4 +15,3 @@ std::vector<std::string> Utils::split_string(const std::string& str) {
     }
     return lines;
 }
-#include "utils.hpp"

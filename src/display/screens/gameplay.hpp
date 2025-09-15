@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 #include <memory>
+#include <set>
 
 // 前向声明
 class Player;
@@ -37,11 +38,10 @@ public:
 
 private:
     void HandleGameCommand(const std::string& command);
+    void MaybeShowBlockStory(const std::string& block_name);
     ftxui::Component component_;
     
     // UI组件
-    ftxui::Component chat_input_;
-    ftxui::Component game_input_;
     std::vector<ftxui::Component> bottom_action_buttons_; // 底部操作按钮（鼠标点击）
 
     // 数据存储
@@ -60,6 +60,7 @@ private:
     // 地图显示
     std::vector<std::string> current_map_lines_;
     std::string current_block_info_;
+    std::set<std::string> visited_blocks_;
     
     // 输入缓冲区
     std::string chat_input_buffer_;

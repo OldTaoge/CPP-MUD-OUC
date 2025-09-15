@@ -168,6 +168,7 @@ std::string MapBlock::getCurrentCellInfo() const {
                 case InteractionType::DIALOGUE: ss << "[对话]"; break;
                 case InteractionType::ACTIVATE: ss << "[激活]"; break;
                 case InteractionType::ENTER: ss << "[进入]"; break;
+                case InteractionType::SHOP: ss << "[商店]"; break;
             }
         }
         ss << "\n按空格键进行交互";
@@ -388,8 +389,8 @@ void SlimeBattleBlock::initializeGrid() {
     setCell(4, 0, northExit);
     exits_[{4, 0}] = 1;
     
-    // 设置东出口（前往安伯营地）
-    MapCell eastExit(CellType::EXIT_EAST, ">", "前往安伯营地");
+    // 设置东出口（前往安安柏营地）
+    MapCell eastExit(CellType::EXIT_EAST, ">", "前往安安柏营地");
     setCell(BLOCK_SIZE-1, 4, eastExit);
     exits_[{BLOCK_SIZE-1, 4}] = 3;
 }
@@ -475,8 +476,8 @@ InteractionResult SlimeBattleBlock::handleBattle(Player& player, int x, int y) {
 // ==================== AmberDialogueBlock 实现 ====================
 
 AmberDialogueBlock::AmberDialogueBlock()
-    : MapBlock(3, "安伯的营地", MapBlockType::DIALOGUE,
-               "西风骑士团的侦察骑士安伯在这里，她似乎有话要对你说"),
+    : MapBlock(3, "安柏的营地", MapBlockType::DIALOGUE,
+               "西风骑士团的侦察骑士安柏在这里，她似乎有话要对你说"),
       dialogueCompleted_(false), amberJoined_(false) {
     initializeGrid();
     initializeInteractionHandlers();
@@ -492,8 +493,8 @@ void AmberDialogueBlock::initializeGrid() {
         setCell(BLOCK_SIZE-1, i, MapCell(CellType::WALL, "#", "墙壁"));
     }
     
-    // 放置安伯
-    MapCell amberCell(CellType::NPC, "A", "安伯");
+    // 放置安柏
+    MapCell amberCell(CellType::NPC, "A", "安柏");
     amberCell.interactions.push_back(InteractionType::DIALOGUE);
     setCell(6, 4, amberCell);
     
@@ -521,16 +522,16 @@ void AmberDialogueBlock::initializeExits() {
 
 InteractionResult AmberDialogueBlock::handleDialogue(Player& player, int x, int y) {
     if (amberJoined_) {
-        return InteractionResult(true, "安伯：很高兴能和你一起冒险！");
+        return InteractionResult(true, "安柏：很高兴能和你一起冒险！");
     }
     // 第一次交互直接加入队伍
     amberJoined_ = true;
-    player.addTeamMember("安伯", 20);
+    player.addTeamMember("安柏", 20);
     state_ = BlockState::COMPLETED;
     return InteractionResult(true,
-        "安伯：你好，旅行者！我是西风骑士团的侦察骑士安伯。\n"
+        "安柏：你好，旅行者！我是西风骑士团的侦察骑士安柏。\n"
         "我听说你正在寻找失散的亲人，我很乐意帮助你！\n"
-        "安伯加入了你的队伍！\n"
+        "安柏加入了你的队伍！\n"
         "她是一名优秀的弓箭手，擅长远程攻击。\n"
         "现在你的队伍更加强大了！", {}, true);
 }
@@ -559,9 +560,14 @@ void MondstadtCityBlock::initializeGrid() {
     MapCell kaeyaCell(CellType::NPC, "K", "凯亚");
     kaeyaCell.interactions.push_back(InteractionType::DIALOGUE);
     setCell(5, 6, kaeyaCell);
+
+    // 放置商人 NPC（符号 S）
+    MapCell shopCell(CellType::NPC, "S", "商人");
+    shopCell.interactions.push_back(InteractionType::SHOP);
+    setCell(3, 5, shopCell);
     
-    // 设置北出口（回到安伯营地）
-    MapCell northExit(CellType::EXIT_NORTH, "^", "返回安伯营地");
+    // 设置北出口（回到安柏营地）
+    MapCell northExit(CellType::EXIT_NORTH, "^", "返回安柏营地");
     setCell(4, 0, northExit);
     exits_[{4, 0}] = 3;
 }
@@ -570,6 +576,12 @@ void MondstadtCityBlock::initializeInteractionHandlers() {
     interactionHandlers_[InteractionType::DIALOGUE] = 
         [this](Player& player, int x, int y) -> InteractionResult {
             return handleKaeyaDialogue(player, x, y);
+        };
+
+    interactionHandlers_[InteractionType::SHOP] =
+        [this](Player& player, int x, int y) -> InteractionResult {
+            // 使用 InteractionResult 的 shouldChangeBlock 作为界面切换信号不合适，改用成功+特定消息标记
+            return InteractionResult(true, "OPEN_SHOP");
         };
 }
 
@@ -595,7 +607,7 @@ InteractionResult MondstadtCityBlock::handleKaeyaDialogue(Player& player, int x,
     
     return InteractionResult(true, 
         "凯亚：你好，旅行者！我是西风骑士团的骑兵队长凯亚。\n"
-        "我听说你帮助了安伯，真是了不起！\n"
+        "我听说你帮助了安柏，真是了不起！\n"
         "让我也加入你的队伍吧，我的冰元素技能会很有用的。\n\n"
         "凯亚加入了你的队伍！\n"
         "他是一名强大的冰元素剑士，擅长控制和输出。", {}, true);
@@ -612,7 +624,7 @@ void MapManagerV2::initializeMap() {
     addBlock(std::make_shared<TutorialBlock>());           // 区块0: 教学区
     addBlock(std::make_shared<StatueOfSevenBlock>());      // 区块1: 七天神像
     addBlock(std::make_shared<SlimeBattleBlock>());        // 区块2: 史莱姆战斗
-    addBlock(std::make_shared<AmberDialogueBlock>());      // 区块3: 安伯对话
+    addBlock(std::make_shared<AmberDialogueBlock>());      // 区块3: 安柏对话
     addBlock(std::make_shared<MondstadtCityBlock>());      // 区块4: 蒙德城
 }
 
@@ -701,7 +713,7 @@ std::vector<std::string> MapManagerV2::renderFullMap() const {
     
     // 显示区块连接图
     fullMap.push_back("区块连接关系:");
-    fullMap.push_back("[0教学区] → [1神像] → [2史莱姆] → [3安伯] → [4蒙德城]");
+    fullMap.push_back("[0教学区] → [1神像] → [2史莱姆] → [3安柏] → [4蒙德城]");
     fullMap.push_back("");
     
     // 显示每个区块的状态

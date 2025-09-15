@@ -29,7 +29,8 @@ enum class InteractionType {
     BATTLE,     // 战斗
     DIALOGUE,   // 对话
     ACTIVATE,   // 激活
-    ENTER       // 进入
+    ENTER,      // 进入
+    SHOP        // 商店
 };
 
 // 地图单元格类型

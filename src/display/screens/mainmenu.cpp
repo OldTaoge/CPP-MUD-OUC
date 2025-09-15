@@ -61,7 +61,7 @@ ScreenMainMenu::ScreenMainMenu() {
         entries_.push_back(std::to_string(i + 1) + ". " + base_entries[i]);
     }
 
-    // 创建按钮组件而不是菜单组件
+    // 创建按钮组件
     std::vector<Component> button_components;
     for (size_t i = 0; i < entries_.size(); ++i) {
         auto button = Button(entries_[i], [this, i] {
@@ -84,10 +84,10 @@ ScreenMainMenu::ScreenMainMenu() {
     auto main_renderer = Renderer(menu_container, [this, menu_container] {
         // 2.2 使用filler和border实现全屏边框和垂直居中效果
         return vbox({
-                    title_element_,        // 使用预创建的标题元素
+                    title_element_,          // 使用预创建的标题元素
                     separator(),             // 分隔符
                     hbox(menu_container->Render() | hcenter) | hcenter |border,
-               }) | border; // 为整个屏幕添加边框
+               }) | border;               // 为整个屏幕添加边框
     });
     
     // 使用窗口大小检测包装主组件

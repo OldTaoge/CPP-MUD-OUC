@@ -7,6 +7,7 @@
 #include <ftxui/screen/terminal.hpp>
 #include <sstream>
 #include <algorithm>
+#include <set>
 
 GameplayScreen::GameplayScreen(Game* game) : game_(game) {
 
@@ -24,8 +25,6 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     player_experience_ = 0;
 
     // 创建UI组件
-    chat_input_ = ftxui::Input(&chat_input_buffer_, "输入聊天消息...");
-    game_input_ = ftxui::Input(&game_input_buffer_, "输入游戏命令...");
 
     // 底部可点击操作按钮（鼠标/键盘）
     bottom_action_buttons_.clear();
@@ -54,7 +53,7 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         int header_h = 3;
         std::string right_status = "Lv." + std::to_string(player_level_) +
                                    "  HP:" + std::to_string(player_hp_) + "/" + std::to_string(player_max_hp_);
-        auto center_title = ftxui::text("原神MUD版") | ftxui::bold | ftxui::color(ftxui::Color::Yellow);
+        auto center_title = ftxui::text("<<原神>>MUD版") | ftxui::bold | ftxui::color(ftxui::Color::Yellow);
         auto right = ftxui::text(right_status) | ftxui::color(ftxui::Color::Cyan);
         auto bar = ftxui::hbox({
                    ftxui::filler(),
@@ -81,6 +80,7 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         auto currentBlock = game_->getMapManager().getCurrentBlock();
         if (currentBlock) {
             currentBlockName = currentBlock->getName();
+            MaybeShowBlockStory(currentBlockName);
         }
         left.push_back(ftxui::text("[地图] " + currentBlockName) | ftxui::bold | ftxui::color(ftxui::Color::Cyan));
         left.push_back(ftxui::separator());
@@ -376,6 +376,11 @@ void GameplayScreen::UpdateMapDisplay() {
         
         // 获取当前位置信息
         current_block_info_ = mapManager.getCurrentCellInfo();
+        // 进入区块时尝试触发剧情
+        auto currentBlock = mapManager.getCurrentBlock();
+        if (currentBlock) {
+            MaybeShowBlockStory(currentBlock->getName());
+        }
         
     } catch (const std::exception& e) {
         current_map_lines_ = {"Map error"};
@@ -392,7 +397,6 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
     
     if (command == "move north") {
         if (game_->movePlayer(0, -1)) {
-            // UpdateGameStatus("向北移动");
             UpdatePlayerInfo(game_->getPlayer());
             UpdateMapDisplay();  // 实时更新地图
         } else {
@@ -400,7 +404,6 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
         }
     } else if (command == "move south") {
         if (game_->movePlayer(0, 1)) {
-            // UpdateGameStatus("向南移动");
             UpdatePlayerInfo(game_->getPlayer());
             UpdateMapDisplay();  // 实时更新地图
         } else {
@@ -408,7 +411,6 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
         }
     } else if (command == "move west") {
         if (game_->movePlayer(-1, 0)) {
-            // UpdateGameStatus("向西移动");
             UpdatePlayerInfo(game_->getPlayer());
             UpdateMapDisplay();  // 实时更新地图
         } else {
@@ -416,7 +418,6 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
         }
     } else if (command == "move east") {
         if (game_->movePlayer(1, 0)) {
-            // UpdateGameStatus("向东移动");
             UpdatePlayerInfo(game_->getPlayer());
             UpdateMapDisplay();  // 实时更新地图
         } else {
@@ -455,6 +456,12 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
         if (!interactions.empty()) {
             // 尝试第一个可用的交互
             auto result = game_->interactWithMap(interactions[0]);
+            if (result.message == "OPEN_SHOP") {
+                if (navigation_callback_) {
+                    navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Shop"));
+                }
+                return; // 切换界面
+            }
             UpdateGameStatus(result.message);
             if (result.success) {
                 UpdatePlayerInfo(game_->getPlayer());
@@ -468,5 +475,49 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
         }
     } else {
         UpdateGameStatus("执行命令: " + command);
+    }
+}
+
+void GameplayScreen::MaybeShowBlockStory(const std::string& block_name) {
+    if (block_name.empty()) return;
+    if (visited_blocks_.count(block_name)) return;
+    visited_blocks_.insert(block_name);
+
+    // 根据区块名称推送首访剧情简介（改编为当前MUD设计的提示风格）
+    if (block_name.find("新手教学区") != std::string::npos) {
+        UpdateGameStatus(" ");
+        UpdateGameStatus("提示：W/A/S/D 移动，空格交互");
+        UpdateGameStatus("你与同伴从坠星山谷出发，沿途探索前行。");
+        UpdateGameStatus("[剧情·启程·坠星山谷]");
+    } else if (block_name.find("安柏的营地") != std::string::npos) {
+        UpdateGameStatus(" ");
+        UpdateGameStatus("少女名为安柏，身为侦察骑士的她提出护送你们前往蒙德");
+        UpdateGameStatus("一位轻盈的少女突然出现，挡住了你的去路。");
+        UpdateGameStatus("[剧情·星落湖]");
+    } else if (block_name.find("史莱姆栖息地") != std::string::npos) {
+        UpdateGameStatus(" ");
+        UpdateGameStatus("提示：到达魔物面前，使用空格键击败它");
+        UpdateGameStatus("林间回荡呢喃，你短暂目击神秘身影与巨兽的交流。");
+        UpdateGameStatus("[剧情·林间回响]");
+    } else if (block_name.find("蒙德城") != std::string::npos) {
+        UpdateGameStatus(" ");
+        UpdateGameStatus("提示：在设置/背包/队伍界面完善配置后再继续主线");
+        UpdateGameStatus("你抵达城邦入口，冒险服务与补给在城内更完善。");
+        UpdateGameStatus("[剧情·自由之都·城门]");
+    } else if (block_name.find("千风神殿") != std::string::npos) {
+        UpdateGameStatus(" ");
+        UpdateGameStatus("提示：观察环境要素，借助交互点推进");
+        UpdateGameStatus("遗迹深处存在风之结晶的残留，需破坏以削弱异动。");
+        UpdateGameStatus("[剧情·遗祠调查·千风神殿]");
+    } else if (block_name.find("风啸山坡") != std::string::npos) {
+        UpdateGameStatus(" ");
+        UpdateGameStatus("提示：元素克制与队伍切换能更高效地推进");
+        UpdateGameStatus("与学识之士协作，确认雷元素设施并清理结晶源。");
+        UpdateGameStatus("[剧情·遗祠调查·风啸山坡]");
+    } else if (block_name.find("七天神像") != std::string::npos) {
+        UpdateGameStatus(" ");
+        UpdateGameStatus("提示：在神像附近多尝试交互，留意系统反馈");
+        UpdateGameStatus("你感到体内与风产生呼应。或许应沿大道前往城邦打听情报。");
+        UpdateGameStatus("[剧情·神像回应]");
     }
 }

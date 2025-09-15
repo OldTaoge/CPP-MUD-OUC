@@ -14,16 +14,14 @@
 #include "screens/map.hpp"
 #include "screens/team.hpp"
 #include "screens/save_select.hpp"
+#include "screens/shop.hpp"
 
 using namespace ftxui;
 
 ScreenManager::ScreenManager()
     : screen_(nullptr), // 初始化为nullptr
       currentScreen_("MainMenu"),
-      nextScreen_(""),
-      shouldQuit_(false),
-      shouldSwitchScreen_(false),
-      game_() // 初始化游戏对象
+      nextScreen_("") // 初始化游戏对象
 {
     // 创建导航回调
     auto nav_callback = [this](const NavigationRequest &request) {
@@ -57,6 +55,10 @@ ScreenManager::ScreenManager()
     // 创建队伍配置屏幕实例
     screens_["Team"] = new TeamScreen(&game_);
     screens_["Team"]->SetNavigationCallback(nav_callback);
+
+    // 创建商店屏幕实例
+    screens_["Shop"] = new ShopScreen(&game_);
+    screens_["Shop"]->SetNavigationCallback(nav_callback);
 
     // 创建存档选择屏幕实例（加载模式）
     screens_["SaveLoad"] = new SaveSelectScreen(&game_, SaveSelectMode::LOAD);
@@ -148,10 +150,6 @@ void ScreenManager::SwitchToScreen(const std::string& screenName) {
     if (screen_) {
         // 先退出当前屏幕，确保所有任务都被清理
         screen_->Exit();
-        
-        // 等待更长时间确保所有延迟任务都被处理
-        // 特别是动画任务的延迟任务需要足够时间来处理
-        //std::this_thread::sleep_for(std::chrono::milliseconds(200));
         
         // 再次确保退出状态
         screen_->Exit();

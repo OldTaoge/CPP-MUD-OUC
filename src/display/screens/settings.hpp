@@ -1,6 +1,7 @@
-//
-// Created by Assistant on 2025/1/27.
-//
+// =============================================
+// 文件: settings.hpp
+// 描述: 设置界面声明。当前提供返回功能与占位内容。
+// =============================================
 
 #ifndef CPP_MUD_OUC_SETTINGS_HPP
 #define CPP_MUD_OUC_SETTINGS_HPP

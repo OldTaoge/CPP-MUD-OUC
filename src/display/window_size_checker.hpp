@@ -1,6 +1,7 @@
-//
-// Created by Assistant on 2025/1/27.
-//
+// =============================================
+// 文件: window_size_checker.hpp
+// 描述: 窗口尺寸检测包装组件。尺寸不足时显示提示界面。
+// =============================================
 
 #ifndef CPP_MUD_OUC_WINDOW_SIZE_CHECKER_HPP
 #define CPP_MUD_OUC_WINDOW_SIZE_CHECKER_HPP

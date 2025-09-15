@@ -1,3 +1,7 @@
+// =============================================
+// 文件: inventory.cpp
+// 描述: 背包界面实现。列表渲染、筛选搜索、使用/装备与状态提示。
+// =============================================
 #include "inventory.hpp"
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>

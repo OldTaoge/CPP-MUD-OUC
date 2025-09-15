@@ -1,6 +1,7 @@
-//
-// Created by Wentao on 2025/8/31.
-//
+// =============================================
+// 文件: mainmenu.cpp
+// 描述: 主菜单屏幕实现。装配 ASCII 标题、按钮与导航回调。
+// =============================================
 #include <ftxui/component/component.hpp>
 #include "../utils/utils.hpp"
 #include "../window_size_checker.hpp"

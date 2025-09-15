@@ -1,6 +1,7 @@
-//
-// Created by Wentao on 2025/8/31.
-//
+// =============================================
+// 文件: mainmenu.hpp
+// 描述: 主菜单屏幕声明。提供开始/加载/说明/设置/退出等入口。
+// =============================================
 
 #ifndef CPP_MUD_OUC_MAINMENU_HPP
 #define CPP_MUD_OUC_MAINMENU_HPP
@@ -15,6 +16,7 @@ public:
     ftxui::Component GetComponent() override;
 
 private:
+    // 处理按钮选择
     void HandleSelection(int selected_option);
 
     ftxui::Component component_;

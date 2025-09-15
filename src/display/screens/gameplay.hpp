@@ -1,6 +1,7 @@
-//
-// Created by Assistant on 2025/1/1.
-//
+// =============================================
+// 文件: gameplay.hpp
+// 描述: 游戏内主界面声明。显示地图、消息、状态并处理基本控制。
+// =============================================
 
 #ifndef CPP_MUD_OUC_GAMEPLAY_HPP
 #define CPP_MUD_OUC_GAMEPLAY_HPP

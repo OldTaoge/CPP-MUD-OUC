@@ -1,6 +1,7 @@
-//
-// Created by Wentao on 2025/8/31.
-//
+// =============================================
+// 文件: illustrateMenu.cpp
+// 描述: 游戏说明界面实现。展示内容与返回主菜单按钮。
+// =============================================
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>

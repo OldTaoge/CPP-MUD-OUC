@@ -1,3 +1,7 @@
+// =============================================
+// 文件: storage.cpp
+// 描述: 存档系统实现。包含 JSON 序列化/反序列化与文件 IO。
+// =============================================
 #include "storage.h"
 #include <fstream>
 #include <iostream>
@@ -7,7 +11,7 @@
 #include <sstream>
 
 GameSave::GameSave() {
-    // 确保saves目录存在
+    // 确保 saves 目录存在
     std::filesystem::create_directories("saves");
 }
 

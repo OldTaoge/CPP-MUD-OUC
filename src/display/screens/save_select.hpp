@@ -1,6 +1,7 @@
-//
-// Created for Save Selection Screen
-//
+// =============================================
+// 文件: save_select.hpp
+// 描述: 存档选择界面声明。支持加载/保存/删除存档与键盘控制。
+// =============================================
 
 #ifndef CPP_MUD_OUC_SAVE_SELECT_HPP
 #define CPP_MUD_OUC_SAVE_SELECT_HPP

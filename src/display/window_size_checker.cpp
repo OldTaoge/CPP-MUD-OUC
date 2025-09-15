@@ -1,6 +1,7 @@
-//
-// Created by Assistant on 2025/1/27.
-//
+// =============================================
+// 文件: window_size_checker.cpp
+// 描述: 检测终端窗口大小并在不足时渲染提示界面。
+// =============================================
 
 #include "window_size_checker.hpp"
 #include <ftxui/component/component.hpp>

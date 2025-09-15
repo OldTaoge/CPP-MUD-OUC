@@ -1,6 +1,7 @@
-//
-// Created by Assistant on 2025/1/27.
-//
+// =============================================
+// 文件: settings.cpp
+// 描述: 设置界面实现。当前仅包含返回按钮与占位文本。
+// =============================================
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>

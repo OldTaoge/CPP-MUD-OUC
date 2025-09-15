@@ -1,6 +1,7 @@
-//
-// Created by Wentao on 2025/8/31.
-//
+// =============================================
+// 文件: illustrateMenu.hpp
+// 描述: 游戏说明界面声明。展示玩法与操作提示。
+// =============================================
 
 #ifndef CPP_MUD_OUC_ILLUSTRATEMENU_HPP
 #define CPP_MUD_OUC_ILLUSTRATEMENU_HPP

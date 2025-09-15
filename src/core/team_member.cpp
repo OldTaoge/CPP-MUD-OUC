@@ -1,3 +1,7 @@
+// =============================================
+// 文件: team_member.cpp
+// 描述: 队伍成员实现。负责装备加成、生命值与伤害/治疗逻辑。
+// =============================================
 #include "team_member.h"
 
 TeamMember::TeamMember(const std::string& name, int level)

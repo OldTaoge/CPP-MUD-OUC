@@ -1,6 +1,7 @@
-//
-// Created for Save Selection Screen
-//
+// =============================================
+// 文件: save_select.cpp
+// 描述: 存档选择界面实现。列表渲染、键盘处理与调用游戏保存/加载。
+// =============================================
 
 #include "save_select.hpp"
 #include "../window_size_checker.hpp"

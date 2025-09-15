@@ -1,3 +1,7 @@
+// =============================================
+// 文件: gameplay.cpp
+// 描述: 游戏内主界面实现。负责地图渲染、消息呈现与基本输入处理。
+// =============================================
 #include "gameplay.hpp"
 #include "../../core/game.h"
 #include <ftxui/component/component.hpp>

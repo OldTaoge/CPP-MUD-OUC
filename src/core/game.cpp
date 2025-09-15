@@ -1,12 +1,20 @@
+// =============================================
+// 文件: game.cpp
+// 描述: 游戏核心实现。负责新游戏初始化、存档读写、地图切换与交互、
+//       玩家经验与升级流程，以及向 UI 层暴露必要的查询/操作接口。
+// 注意: 避免在此文件中引入与 UI 强耦合的头，以保持核心层纯净。
+// =============================================
 #include "game.h"
 #include <iostream>
 
+// 构造函数：初始化玩家与状态。地图与队伍的完整初始化在 StartNewGame 中完成。
 Game::Game() 
     : player_("默认玩家", 1, 1), 
       currentState_(GameState::MAIN_MENU) {
-    // 初始化保存系统
+    // 预留：保存系统的初始化如需异步或检查磁盘，可在此扩展
 }
 
+// 开始新游戏：重置玩家、队伍、背包，并将地图定位到默认区块
 void Game::StartNewGame() {
     std::cout << "开始新游戏..." << std::endl;
     InitializeNewPlayer();
@@ -14,10 +22,12 @@ void Game::StartNewGame() {
     std::cout << "新游戏开始！" << std::endl;
 }
 
+// 加载游戏：采用带地图状态的加载流程
 void Game::LoadGame() {
     LoadGameWithMapState();
 }
 
+// 加载指定存档文件
 void Game::LoadGame(const std::string& saveFileName) {
     std::cout << "正在加载游戏: " << saveFileName << std::endl;
     
@@ -37,6 +47,7 @@ void Game::LoadGame(const std::string& saveFileName) {
     }
 }
 
+// 加载游戏并恢复地图状态：若无存档则启动新游戏
 void Game::LoadGameWithMapState() {
     std::cout << "正在加载游戏..." << std::endl;
     
@@ -68,10 +79,12 @@ void Game::LoadGameWithMapState() {
     }
 }
 
+// 保存游戏（带地图信息）
 void Game::SaveGame() {
     SaveGameWithMapState();
 }
 
+// 保存到指定存档文件名
 void Game::SaveGame(const std::string& saveFileName) {
     std::cout << "正在保存游戏: " << saveFileName << std::endl;
     
@@ -88,6 +101,7 @@ void Game::SaveGame(const std::string& saveFileName) {
     }
 }
 
+// 自动保存到默认文件名（示例：autosave.json）
 void Game::SaveGameWithMapState() {
     std::cout << "正在保存游戏..." << std::endl;
     
@@ -102,6 +116,7 @@ void Game::SaveGameWithMapState() {
     }
 }
 
+// 初始化新玩家、队伍与背包，并与地图管理器同步位置
 void Game::InitializeNewPlayer() {
     // 重置玩家状态
     player_ = Player("玩家", 0, 0);
@@ -127,27 +142,33 @@ void Game::InitializeNewPlayer() {
     std::cout << "新游戏初始化完成！" << std::endl;
 }
 
+// 列出存档文件
 std::vector<std::string> Game::getSaveFiles() const {
     return gameSave_.listSaveFiles();
 }
 
+// 读取存档的概要信息（不加载完整游戏）
 GameSave::SaveInfo Game::getSaveInfo(const std::string& saveFileName) const {
     return gameSave_.getSaveInfo(saveFileName);
 }
 
+// 检查指定名称的存档是否存在
 bool Game::saveExists(const std::string& saveFileName) const {
     return gameSave_.saveExists(saveFileName);
 }
 
+// 删除指定名称的存档
 bool Game::deleteSave(const std::string& saveFileName) const {
     return gameSave_.deleteSave(saveFileName);
 }
 
+// 直接更新玩家坐标。若涉及地图规则与碰撞，请使用 movePlayer。
 void Game::updatePlayerPosition(int x, int y) {
     player_.x = x;
     player_.y = y;
 }
 
+// 增加经验并在达到阈值时自动升级
 void Game::addExperience(int exp) {
     player_.experience += exp;
     
@@ -158,6 +179,7 @@ void Game::addExperience(int exp) {
     }
 }
 
+// 升级逻辑：提升玩家等级，重置经验，并同步队伍成员
 void Game::levelUp() {
     player_.level++;
     player_.experience = 0; // 重置经验值
@@ -171,6 +193,7 @@ void Game::levelUp() {
     std::cout << "恭喜！玩家升级到 " << player_.level << " 级！" << std::endl;
 }
 
+// 初始化背包：可按需添加初始物品（示例保留注释以示用法）
 void Game::setupInitialInventory() {
     // 添加一些初始物品
     //player_.addItemToInventory(ItemFactory::createWeapon("新手剑", WeaponType::ONE_HANDED_SWORD, Rarity::ONE_STAR));
@@ -182,6 +205,7 @@ void Game::setupInitialInventory() {
     // player_.addItemToInventory(ItemFactory::createMaterial("胡萝卜", MaterialType::COOKING_INGREDIENT, Rarity::ONE_STAR));
 }
 
+// 初始化队伍：为首位成员装备基础武器并设为活跃
 void Game::setupInitialTeam() {
     // Player构造函数已经添加了"旅行者"作为初始成员
     // 这里为初始成员装备武器和设置状态
@@ -202,11 +226,12 @@ void Game::setupInitialTeam() {
     }
 }
 
-// 地图系统相关方法
+// 地图系统相关方法 ---------------------------------------------------------
 InteractionResult Game::interactWithMap(InteractionType interactionType) {
     return mapManager_.interactWithCurrentCell(player_, interactionType);
 }
 
+// 请求移动玩家：若地图允许移动，则同步玩家坐标
 bool Game::movePlayer(int deltaX, int deltaY) {
     if (mapManager_.movePlayer(deltaX, deltaY)) {
         // 更新玩家坐标
@@ -218,6 +243,7 @@ bool Game::movePlayer(int deltaX, int deltaY) {
     return false;
 }
 
+// 获取当前位置可用的交互选项
 std::vector<InteractionType> Game::getAvailableMapInteractions() const {
     return mapManager_.getAvailableInteractions();
 }

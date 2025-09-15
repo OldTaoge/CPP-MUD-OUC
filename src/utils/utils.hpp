@@ -1,6 +1,7 @@
-//
-// Created by Wentao on 2025/9/1.
-//
+// =============================================
+// 文件: utils.hpp
+// 描述: 通用工具函数声明。
+// =============================================
 
 #ifndef CPP_MUD_OUC_UTILS_HPP
 #define CPP_MUD_OUC_UTILS_HPP

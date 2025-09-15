@@ -1,3 +1,8 @@
+// =============================================
+// 文件: display.cpp
+// 描述: 屏幕管理器实现。负责多屏注册、导航、以及与 Game 的桥接。
+// 说明: 屏幕组件在 screens/* 下定义，此处只做装配与流程控制。
+// =============================================
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/screen_interactive.hpp>
 #include <iostream>
@@ -19,52 +24,52 @@
 using namespace ftxui;
 
 ScreenManager::ScreenManager()
-    : screen_(nullptr), // 初始化为nullptr
+    : screen_(nullptr), // 初始化为 nullptr
       currentScreen_("MainMenu"),
-      nextScreen_("") // 初始化游戏对象
+      nextScreen_("")
 {
     // 创建导航回调
     auto nav_callback = [this](const NavigationRequest &request) {
         this->HandleNavigationRequest(request);
     };
 
-    // 创建MainMenu屏幕实例
+    // 创建 MainMenu 屏幕实例
     screens_["MainMenu"] = new ScreenMainMenu();
     screens_["MainMenu"]->SetNavigationCallback(nav_callback);
 
-    // 创建游戏说明屏幕实例
+    // 创建 游戏说明 屏幕实例
     screens_["Illustrate"] = new IllustrateMenu();
     screens_["Illustrate"]->SetNavigationCallback(nav_callback);
 
-    // 创建设置屏幕实例
+    // 创建 设置 屏幕实例
     screens_["Settings"] = new SettingsScreen();
     screens_["Settings"]->SetNavigationCallback(nav_callback);
 
-    // 创建背包屏幕实例
+    // 创建 背包 屏幕实例
     screens_["Inventory"] = new InventoryScreen(&game_);
     screens_["Inventory"]->SetNavigationCallback(nav_callback);
 
-    // 创建游戏界面屏幕实例
+    // 创建 游戏界面 屏幕实例
     screens_["Gameplay"] = new GameplayScreen(&game_);
     screens_["Gameplay"]->SetNavigationCallback(nav_callback);
 
-    // 创建地图界面屏幕实例
+    // 创建 地图界面 屏幕实例
     screens_["Map"] = new MapScreen(&game_);
     screens_["Map"]->SetNavigationCallback(nav_callback);
 
-    // 创建队伍配置屏幕实例
+    // 创建 队伍配置 屏幕实例
     screens_["Team"] = new TeamScreen(&game_);
     screens_["Team"]->SetNavigationCallback(nav_callback);
 
-    // 创建商店屏幕实例
+    // 创建 商店 屏幕实例
     screens_["Shop"] = new ShopScreen(&game_);
     screens_["Shop"]->SetNavigationCallback(nav_callback);
 
-    // 创建存档选择屏幕实例（加载模式）
+    // 创建 存档选择 屏幕实例（加载模式）
     screens_["SaveLoad"] = new SaveSelectScreen(&game_, SaveSelectMode::LOAD);
     screens_["SaveLoad"]->SetNavigationCallback(nav_callback);
 
-    // 创建存档选择屏幕实例（保存模式）
+    // 创建 存档选择 屏幕实例（保存模式）
     screens_["SaveSave"] = new SaveSelectScreen(&game_, SaveSelectMode::SAVE);
     screens_["SaveSave"]->SetNavigationCallback(nav_callback);
 
@@ -73,7 +78,7 @@ ScreenManager::ScreenManager()
 }
 
 ScreenManager::~ScreenManager() {
-    // 删除屏幕实例
+    // 删除屏幕实例与所有屏幕组件
     if (screen_) {
         delete screen_;
         screen_ = nullptr;

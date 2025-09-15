@@ -16,6 +16,7 @@
 // 前向声明
 class Player;
 
+// 主游戏界面：负责地图、消息、状态显示与基本控制
 class GameplayScreen : public BaseScreen {
 public:
     GameplayScreen(Game* game = nullptr);

@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <set>
 
+// 构造：初始化主游戏界面（地图/消息/状态与快捷操作）
 GameplayScreen::GameplayScreen(Game* game) : game_(game) {
 
     // 初始化地图显示
@@ -308,10 +309,12 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     });
 }
 
+// 返回该界面的根组件供外部挂载
 ftxui::Component GameplayScreen::GetComponent() {
     return component_;
 }
 
+// 同步玩家基础信息（等级/经验/当前上场角色 HP）
 void GameplayScreen::UpdatePlayerInfo(const Player& player) {
     player_name_ = player.name;
     auto active = player.getActiveMember();
@@ -325,6 +328,7 @@ void GameplayScreen::UpdatePlayerInfo(const Player& player) {
     player_status_ = ss.str();
 }
 
+// 追加一条聊天消息（保留最多 20 条）
 void GameplayScreen::AddChatMessage(const std::string& message) {
     chat_messages_.push_back(message);
     // 限制消息数量
@@ -333,6 +337,7 @@ void GameplayScreen::AddChatMessage(const std::string& message) {
     }
 }
 
+// 追加一条系统/游戏状态消息（保留最多 20 条）
 void GameplayScreen::UpdateGameStatus(const std::string& status) {
     game_messages_.push_back(status);
     // 限制消息数量
@@ -341,10 +346,12 @@ void GameplayScreen::UpdateGameStatus(const std::string& status) {
     }
 }
 
+// 替换队伍成员显示数据
 void GameplayScreen::UpdateTeamStatus(const std::vector<std::string>& teamMembers) {
     team_members_ = teamMembers;
 }
 
+// 重新生成队伍成员信息（含 HP）并刷新右侧显示
 void GameplayScreen::RefreshTeamDisplay() {
     if (!game_) return;
     
@@ -361,11 +368,13 @@ void GameplayScreen::RefreshTeamDisplay() {
     UpdateTeamStatus(teamMemberNames);
 }
 
+// 清空所有消息（系统与聊天）
 void GameplayScreen::ClearAllMessages() {
     game_messages_.clear();
     chat_messages_.clear();
 }
 
+// 刷新地图显示与当前位置说明，必要时触发首次到访剧情提示
 void GameplayScreen::UpdateMapDisplay() {
     if (!game_) {
         current_map_lines_ = {"Map not available"};
@@ -393,6 +402,7 @@ void GameplayScreen::UpdateMapDisplay() {
 }
 
 
+// 处理核心游戏指令：移动/切换队友/交互等
 void GameplayScreen::HandleGameCommand(const std::string& command) {
     if (!game_) {
         UpdateGameStatus("游戏对象未初始化");
@@ -482,6 +492,7 @@ void GameplayScreen::HandleGameCommand(const std::string& command) {
     }
 }
 
+// 首次进入区块时显示简要剧情/提示
 void GameplayScreen::MaybeShowBlockStory(const std::string& block_name) {
     if (block_name.empty()) return;
     if (visited_blocks_.count(block_name)) return;

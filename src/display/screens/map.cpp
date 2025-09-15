@@ -9,9 +9,12 @@
 #include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <ftxui/screen/screen.hpp>
+#include <string>
+#include <vector>
 #include <sstream>
 #include <algorithm>
 
+// 构造：初始化地图界面与默认玩家/位置信息，并建立 UI 组件树
 MapScreen::MapScreen(Game* game) : game_(game), player_x_(0), player_y_(0) {
     // 初始化默认值
     player_name_ = "未知玩家";
@@ -196,10 +199,12 @@ MapScreen::MapScreen(Game* game) : game_(game), player_x_(0), player_y_(0) {
     });
 }
 
+// 返回地图界面的根组件供外部挂载
 ftxui::Component MapScreen::GetComponent() {
     return component_;
 }
 
+// 同步游戏数据到界面：刷新玩家信息、地图文本与位置信息
 void MapScreen::UpdateMapData(const Game& game) {
     try {
         // 更新玩家信息
@@ -244,6 +249,7 @@ void MapScreen::UpdateMapData(const Game& game) {
     }
 }
 
+// 追加地图消息（保持最多 10 条）
 void MapScreen::AddMapMessage(const std::string& message) {
     map_messages_.push_back(message);
     // 限制消息数量
@@ -252,10 +258,12 @@ void MapScreen::AddMapMessage(const std::string& message) {
     }
 }
 
+// 清空地图消息
 void MapScreen::ClearMapMessages() {
     map_messages_.clear();
 }
 
+// 处理移动：调用游戏逻辑尝试移动并记录结果
 void MapScreen::HandleMovement(int deltaX, int deltaY) {
     if (!game_) {
         AddMapMessage("游戏对象未初始化");
@@ -272,6 +280,7 @@ void MapScreen::HandleMovement(int deltaX, int deltaY) {
     }
 }
 
+// 准备交互菜单：根据可用交互填充选项并显示
 void MapScreen::HandleInteraction() {
     if (!game_) {
         AddMapMessage("游戏对象未初始化");
@@ -311,14 +320,17 @@ void MapScreen::HandleInteraction() {
     ShowInteractionMenu();
 }
 
+// 显示交互菜单
 void MapScreen::ShowInteractionMenu() {
     show_interaction_menu_ = true;
 }
 
+// 隐藏交互菜单
 void MapScreen::HideInteractionMenu() {
     show_interaction_menu_ = false;
 }
 
+// 执行交互：根据用户选择调用对应的游戏交互
 void MapScreen::HandleInteractionOption(int optionIndex) {
     if (!game_ || optionIndex < 0 || optionIndex >= interaction_options_.size()) {
         HideInteractionMenu();
@@ -344,11 +356,13 @@ void MapScreen::HandleInteractionOption(int optionIndex) {
     HideInteractionMenu();
 }
 
+// 强制更新地图显示（保留钩子）
 void MapScreen::UpdateMapDisplay() {
     // 强制更新地图显示
     // 这个方法可以在需要时被调用来刷新显示
 }
 
+// 刷新地图显示：拉取最新数据并提示结果
 void MapScreen::RefreshMapDisplay() {
     if (game_) {
         try {
@@ -362,6 +376,7 @@ void MapScreen::RefreshMapDisplay() {
     }
 }
 
+// 切换地图视图（当前固定为整图）：触发刷新
 void MapScreen::ToggleMapView() {
     // 已移除视图切换，保持为完整地图视图
     RefreshMapDisplay();

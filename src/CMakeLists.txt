@@ -43,7 +43,9 @@ add_executable(CPP_MUD_OUC core/main.cpp
         utils/utils.cpp
         utils/utils.hpp
         utils/llm_client.cpp
-        utils/llm_client.hpp)
+        utils/llm_client.hpp
+        utils/global_settings.cpp
+        utils/global_settings.hpp)
 
 target_include_directories(CPP_MUD_OUC PRIVATE vendor)
 

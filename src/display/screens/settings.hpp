@@ -1,6 +1,6 @@
 // =============================================
 // 文件: settings.hpp
-// 描述: 设置界面声明。当前提供返回功能与占位内容。
+// 描述: 设置界面声明。提供AI开关等设置选项。
 // =============================================
 
 #ifndef CPP_MUD_OUC_SETTINGS_HPP
@@ -18,10 +18,13 @@ public:
     
 private:
     void HandleSelection(int selected_option);
+    void UpdateGlobalSettings();
     
     ftxui::Component component_;
-    ftxui::Element content_element_; // 缓存内容元素
+    ftxui::Component ai_toggle_;
     std::string source_screen_; // 来源界面名称
+    int ai_toggle_selected_ = 0; // AI开关状态，0=禁用，1=启用
+    std::vector<std::string> ai_toggle_options_; // AI开关选项
 };
 
 

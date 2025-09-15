@@ -13,8 +13,10 @@
 #include <algorithm>
 #include <set>
 #include <thread>
+#include <functional>
 
 #include "../../utils/llm_client.hpp"
+#include "../../utils/global_settings.hpp"
 
 // 构造：初始化主游戏界面（地图/消息/状态与快捷操作）
 GameplayScreen::GameplayScreen(Game* game) : game_(game) {
@@ -33,50 +35,7 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     player_experience_ = 0;
 
     // 创建UI组件
-
-    // 底部可点击操作按钮（鼠标/键盘）
-    bottom_action_buttons_.clear();
-    bottom_action_buttons_.push_back(ftxui::Button("交互", [this] { HandleGameCommand("interact"); }));
-    bottom_action_buttons_.push_back(ftxui::Button("背包", [this] {
-        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Inventory"));
-    }));
-    bottom_action_buttons_.push_back(ftxui::Button("队伍", [this] {
-        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Team"));
-    }));
-    bottom_action_buttons_.push_back(ftxui::Button("地图", [this] {
-        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Map"));
-    }));
-    bottom_action_buttons_.push_back(ftxui::Button("设置", [this] {
-        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Settings"));
-    }));
-    bottom_action_buttons_.push_back(ftxui::Button("智能建议", [this] {
-        // 采集上下文并调用LLM（避免阻塞UI，使用后台线程，完成后刷新消息）
-        UpdateGameStatus("[AI] 正在分析…");
-        auto context_builder = [this]() {
-            std::stringstream ss;
-            ss << "玩家: " << player_name_ << "\n";
-            ss << "等级:" << player_level_ << ", HP:" << player_hp_ << "/" << player_max_hp_ << "\n";
-            ss << "位置: " << current_block_info_ << "\n";
-            ss << "近期消息:\n";
-            int cnt = 0;
-            for (auto it = game_messages_.rbegin(); it != game_messages_.rend() && cnt < 6; ++it, ++cnt) {
-                ss << "- " << *it << "\n";
-            }
-            ss << "请给出下一步操作建议。";
-            return ss.str();
-        };
-        std::thread([this, context_builder]() {
-            auto suggestion = RequestOpenAISuggestion(context_builder());
-            last_llm_suggestion_ = suggestion;
-            UpdateGameStatus(std::string("[AI建议] ") + suggestion);
-        }).detach();
-    }));
-    bottom_action_buttons_.push_back(ftxui::Button("保存", [this] {
-        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SAVE_GAME));
-    }));
-    bottom_action_buttons_.push_back(ftxui::Button("退出", [this] {
-        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "MainMenu"));
-    }));
+    RebuildBottomButtons();
 
     // 顶栏：仅保留中间标题和右侧状态
     auto header_renderer = ftxui::Renderer([this] {
@@ -578,4 +537,313 @@ void GameplayScreen::MaybeShowBlockStory(const std::string& block_name) {
         UpdateGameStatus("[剧情·神像回应]");
         UpdateGameStatus(" ");
     }
+}
+
+// 重新构建底部按钮列表（用于设置更改后刷新）
+void GameplayScreen::RebuildBottomButtons() {
+    // 清空现有按钮
+    bottom_action_buttons_.clear();
+    
+    // 重新创建所有按钮
+    bottom_action_buttons_.push_back(ftxui::Button("交互", [this] { HandleGameCommand("interact"); }));
+    bottom_action_buttons_.push_back(ftxui::Button("背包", [this] {
+        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Inventory"));
+    }));
+    bottom_action_buttons_.push_back(ftxui::Button("队伍", [this] {
+        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Team"));
+    }));
+    bottom_action_buttons_.push_back(ftxui::Button("地图", [this] {
+        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Map"));
+    }));
+    bottom_action_buttons_.push_back(ftxui::Button("设置", [this] {
+        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Settings"));
+    }));
+    
+    // 根据当前AI设置状态决定是否添加智能建议按钮
+    if (GlobalSettings::IsAIEnabled()) {
+        bottom_action_buttons_.push_back(ftxui::Button("智能建议", [this] {
+            // 采集上下文并调用LLM（避免阻塞UI，使用后台线程，完成后刷新消息）
+            UpdateGameStatus("[AI] 正在分析…");
+            auto context_builder = [this]() {
+                std::stringstream ss;
+                ss << "玩家: " << player_name_ << "\n";
+                ss << "等级:" << player_level_ << ", HP:" << player_hp_ << "/" << player_max_hp_ << "\n";
+                ss << "位置: " << current_block_info_ << "\n";
+                ss << "近期消息:\n";
+                int cnt = 0;
+                for (auto it = game_messages_.rbegin(); it != game_messages_.rend() && cnt < 6; ++it, ++cnt) {
+                    ss << "- " << *it << "\n";
+                }
+                ss << "请给出下一步操作建议。";
+                return ss.str();
+            };
+            std::thread([this, context_builder]() {
+                auto suggestion = RequestOpenAISuggestion(context_builder());
+                last_llm_suggestion_ = suggestion;
+                UpdateGameStatus(std::string("[AI建议] ") + suggestion);
+            }).detach();
+        }));
+    }
+    
+    bottom_action_buttons_.push_back(ftxui::Button("保存", [this] {
+        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SAVE_GAME));
+    }));
+    bottom_action_buttons_.push_back(ftxui::Button("退出", [this] {
+        if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "MainMenu"));
+    }));
+    
+    // 重新创建底部容器和渲染器
+    auto bottom_container = ftxui::Container::Horizontal(bottom_action_buttons_);
+    auto bottom_renderer = ftxui::Renderer(bottom_container, [this] {
+        int bottom_h = 6; // 底栏约 10%
+        std::vector<ftxui::Element> btns;
+        for (auto& b : bottom_action_buttons_) {
+            btns.push_back(b->Render());
+            btns.push_back(ftxui::text(" "));
+        }
+        
+        // 操作提示 - 使用更美观的样式
+        auto help = ftxui::text("W/A/S/D 移动  空格 交互  Q/E 切换队友  Esc 退出") |
+                   ftxui::color(ftxui::Color::GrayLight);
+        
+        auto bar = ftxui::hbox({ ftxui::hbox(btns), ftxui::filler(), help }) | 
+                  ftxui::border | ftxui::color(ftxui::Color::Green);
+        return bar | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, bottom_h);
+    });
+    
+    // 重新创建主组件
+    auto header_renderer = ftxui::Renderer([this] {
+        int header_h = 3;
+        std::string right_status = "Lv." + std::to_string(player_level_) +
+                                   "  HP:" + std::to_string(player_hp_) + "/" + std::to_string(player_max_hp_);
+        auto center_title = ftxui::text("<<原神>>MUD版") | ftxui::bold | ftxui::color(ftxui::Color::Yellow);
+        auto right = ftxui::text(right_status) | ftxui::color(ftxui::Color::Cyan);
+        auto bar = ftxui::hbox({
+                   ftxui::filler(),
+                   center_title,
+                   ftxui::filler(),
+                   right,
+               }) | ftxui::border | ftxui::color(ftxui::Color::Blue);
+        return bar | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, header_h);
+    });
+
+    // 中部：左"游戏消息"/右"游戏状态（详细）"
+    auto main_renderer = ftxui::Renderer([this] {
+        auto dims = ftxui::Terminal::Size();
+        int header_h = 3;
+        int bottom_h = 3;
+        int main_h = std::max(5, dims.dimy - header_h - bottom_h);
+        int message_h = std::max(5, main_h * 6 / 10 - 1); // 为消息预留约 60% 的高度，减1行给队伍区域
+
+        // 左侧：地图显示 - 优化美观度
+        std::vector<ftxui::Element> left;
+        
+        // 地图标题 - 显示当前区块名称
+        std::string currentBlockName = "未知区域";
+        auto currentBlock = game_->getMapManager().getCurrentBlock();
+        if (currentBlock) {
+            currentBlockName = currentBlock->getName();
+            MaybeShowBlockStory(currentBlockName);
+        }
+        left.push_back(ftxui::text("[地图] " + currentBlockName) | ftxui::bold | ftxui::color(ftxui::Color::Cyan));
+        left.push_back(ftxui::separator());
+        
+        // 地图内容 - 使用等宽字体和颜色，为交互元素添加精确的单位置高亮
+        std::vector<ftxui::Element> map_content;
+        for (const auto& line : current_map_lines_) {
+            // 检查是否为地图网格区域（包含边框字符的行，但不是图例或标题）
+            bool isMapGrid = (line.find("+") != std::string::npos || line.find("-") != std::string::npos || 
+                             line.find("|") != std::string::npos) && 
+                             line.find("=== 地图图例 ===") == std::string::npos && 
+                             line.find("P =") == std::string::npos && line.find("I =") == std::string::npos && 
+                             line.find("N =") == std::string::npos && line.find("S =") == std::string::npos && 
+                             line.find("M =") == std::string::npos && line.find("^v>< =") == std::string::npos && 
+                             line.find("# =") == std::string::npos && line.find(". =") == std::string::npos &&
+                             line.length() > 5; // 确保不是简短的标题行，但允许区块名称显示
+            
+            if (isMapGrid) {
+                // 地图网格区域 - 为每个字符位置单独应用样式
+                std::vector<ftxui::Element> styled_chars;
+                for (size_t i = 0; i < line.length(); ++i) {
+                    char c = line[i];
+                    ftxui::Element char_element = ftxui::text(std::string(1, c));
+                    
+                    // 根据字符类型应用不同的样式，确保良好的对比度和可读性
+                    if (c == '+' || c == '-' || c == '|') {
+                        // 边框字符 - 青色
+                        char_element = char_element | ftxui::color(ftxui::Color::Cyan) | ftxui::bold;
+                    } else if (c == 'P') {
+                        // 玩家位置 - 白色文字配深蓝色背景
+                        char_element = char_element | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Blue) | ftxui::bold;
+                    } else if (c == 'I') {
+                        // 物品 - 白色文字配深绿色背景
+                        char_element = char_element | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Green) | ftxui::bold;
+                    } else if (c == 'N') {
+                        // NPC - 白色文字配深青色背景
+                        char_element = char_element | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Cyan) | ftxui::bold;
+                    } else if (c == 'S') {
+                        // 神像 - 黑色文字配黄色背景
+                        char_element = char_element | ftxui::color(ftxui::Color::Black) | ftxui::bgcolor(ftxui::Color::Yellow) | ftxui::bold;
+                    } else if (c == 'M') {
+                        // 怪物 - 白色文字配红色背景
+                        char_element = char_element | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Red) | ftxui::bold;
+                    } else if (c == '^' || c == 'v' || c == '>' || c == '<') {
+                        // 出口 - 白色文字配紫色背景
+                        char_element = char_element | ftxui::color(ftxui::Color::White) | ftxui::bgcolor(ftxui::Color::Magenta) | ftxui::bold;
+                    } else if (c == '#') {
+                        // 墙壁 - 灰色
+                        char_element = char_element | ftxui::color(ftxui::Color::GrayLight) | ftxui::bold;
+                    } else if (c == '.') {
+                        // 空地 - 白色
+                        char_element = char_element | ftxui::color(ftxui::Color::White);
+                    } else {
+                        // 其他字符 - 青色
+                        char_element = char_element | ftxui::color(ftxui::Color::Cyan) | ftxui::bold;
+                    }
+                    
+                    styled_chars.push_back(char_element);
+                }
+                
+                // 将样式化的字符组合成一行
+                auto styled_line = ftxui::hbox(styled_chars);
+                map_content.push_back(styled_line);
+            } else if (line.find("=== 地图图例 ===") != std::string::npos) {
+                // 图例标题 - 使用黄色
+                auto styled_line = ftxui::text(line) | ftxui::color(ftxui::Color::Yellow) | ftxui::bold;
+                map_content.push_back(styled_line);
+            } else if (line.find("P =") != std::string::npos || line.find("I =") != std::string::npos || 
+                      line.find("N =") != std::string::npos || line.find("S =") != std::string::npos || 
+                      line.find("M =") != std::string::npos || line.find("^v>< =") != std::string::npos || 
+                      line.find("# =") != std::string::npos || line.find(". =") != std::string::npos) {
+                // 图例说明 - 使用普通颜色，不高亮
+                auto styled_line = ftxui::text(line) | ftxui::color(ftxui::Color::GrayLight);
+                map_content.push_back(styled_line);
+            } else {
+                // 其他内容 - 使用绿色
+                auto styled_line = ftxui::text(line) | ftxui::color(ftxui::Color::Green);
+                map_content.push_back(styled_line);
+            }
+        }
+        
+        // 将地图内容放在一个带边框的容器中
+        auto map_box = ftxui::vbox(map_content) | ftxui::border | ftxui::color(ftxui::Color::Green);
+        left.push_back(map_box);
+        
+        // 区块信息 - 使用更美观的样式
+        if (!current_block_info_.empty()) {
+            left.push_back(ftxui::separator());
+            left.push_back(ftxui::text("[位置] 位置信息") | ftxui::bold | ftxui::color(ftxui::Color::Yellow));
+            left.push_back(ftxui::paragraph(current_block_info_) | ftxui::color(ftxui::Color::White));
+        }
+        
+        auto left_box = ftxui::vbox(left) | ftxui::border | ftxui::color(ftxui::Color::Blue);
+
+        // 右侧：游戏消息（固定高度视口） + 游戏状态（玩家/队伍） - 优化美观度
+        std::vector<ftxui::Element> right;
+        
+        // 游戏消息区域
+        right.push_back(ftxui::text("[消息] 游戏消息") | ftxui::bold | ftxui::color(ftxui::Color::Magenta));
+        right.push_back(ftxui::separator());
+        std::vector<ftxui::Element> msg_lines;
+        if (game_messages_.empty()) {
+            msg_lines.push_back(ftxui::text("暂无消息") | ftxui::color(ftxui::Color::GrayLight));
+        } else {
+            // 为了保证新增消息在存在多行换行时也能立即可见，按时间倒序显示（最新在上）
+            for (auto it = game_messages_.rbegin(); it != game_messages_.rend(); ++it) {
+                const auto& m = *it;
+                // 为不同类型的消息添加不同颜色
+                auto styled_msg = ftxui::paragraph(m);
+                if (m.find("胜利") != std::string::npos || m.find("成功") != std::string::npos) {
+                    styled_msg = styled_msg | ftxui::color(ftxui::Color::Green);
+                } else if (m.find("失败") != std::string::npos || m.find("错误") != std::string::npos) {
+                    styled_msg = styled_msg | ftxui::color(ftxui::Color::Red);
+                } else if (m.find("获得") != std::string::npos || m.find("奖励") != std::string::npos) {
+                    styled_msg = styled_msg | ftxui::color(ftxui::Color::Yellow);
+                } else {
+                    styled_msg = styled_msg | ftxui::color(ftxui::Color::White);
+                }
+                msg_lines.push_back(styled_msg);
+            }
+        }
+        auto messages_view = ftxui::vbox(msg_lines) | ftxui::vscroll_indicator | ftxui::yframe |
+                             ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, message_h);
+        right.push_back(messages_view);
+        
+        // 游戏状态区域
+        right.push_back(ftxui::separator());
+        right.push_back(ftxui::text("[状态] 游戏状态") | ftxui::bold | ftxui::color(ftxui::Color::Cyan));
+        right.push_back(ftxui::separator());
+        
+        // 玩家信息 - 使用更美观的显示
+        auto activeMember = game_->getPlayer().getActiveMember();
+        std::string activeName = activeMember ? activeMember->getName() : "无";
+        right.push_back(ftxui::paragraph("上场角色: " + activeName) | ftxui::color(ftxui::Color::White));
+        right.push_back(ftxui::paragraph("等级: Lv." + std::to_string(player_level_)) | ftxui::color(ftxui::Color::Yellow));
+        
+        // HP显示 - 使用颜色表示血量状态
+        auto hp_color = (player_hp_ > player_max_hp_ * 0.5) ? ftxui::Color::Green : 
+                       (player_hp_ > player_max_hp_ * 0.25) ? ftxui::Color::Yellow : ftxui::Color::Red;
+        right.push_back(ftxui::paragraph("HP: " + std::to_string(player_hp_) + "/" + std::to_string(player_max_hp_)) | ftxui::color(hp_color));
+        right.push_back(ftxui::paragraph(player_status_) | ftxui::color(ftxui::Color::GrayLight));
+        
+        // 队伍成员区域
+        right.push_back(ftxui::separator());
+        right.push_back(ftxui::text("[队伍] 队伍成员") | ftxui::bold | ftxui::color(ftxui::Color::Blue));
+        right.push_back(ftxui::separator());
+        if (team_members_.empty()) {
+            right.push_back(ftxui::text("暂无队伍成员") | ftxui::color(ftxui::Color::GrayLight));
+        } else {
+            for (const auto& member : team_members_) {
+                // 为队伍成员添加颜色
+                right.push_back(ftxui::paragraph("* " + member) | ftxui::color(ftxui::Color::White));
+            }
+        }
+        
+        auto right_box = ftxui::vbox(right) | ftxui::border | ftxui::color(ftxui::Color::Magenta);
+
+        // 按 7:3 比例分配宽度
+        int left_w = std::max(20, dims.dimx * 5 / 10);
+        int right_w = std::max(10, dims.dimx - left_w);
+        auto left_sized = left_box | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, left_w);
+        auto right_sized = right_box | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, right_w);
+
+        return ftxui::hbox({ left_sized, right_sized }) | ftxui::size(ftxui::HEIGHT, ftxui::EQUAL, main_h);
+    });
+
+    // 主组件（顶栏 / 中部 / 底部）
+    component_ = ftxui::Container::Vertical({ header_renderer, main_renderer, bottom_renderer });
+
+    // 移除工具菜单叠加层和相关事件处理
+    // component_ |= ftxui::CatchEvent([this](ftxui::Event event) { ... });
+    component_ |= ftxui::CatchEvent([this](ftxui::Event event) {
+        // 仅保留游戏控制快捷键
+        if (event == ftxui::Event::Character('w') || event == ftxui::Event::ArrowUp) {
+            HandleGameCommand("move north");
+            return true;
+        } else if (event == ftxui::Event::Character('s') || event == ftxui::Event::ArrowDown) {
+            HandleGameCommand("move south");
+            return true;
+        } else if (event == ftxui::Event::Character('a') || event == ftxui::Event::ArrowLeft) {
+            HandleGameCommand("move west");
+            return true;
+        } else if (event == ftxui::Event::Character('d') || event == ftxui::Event::ArrowRight) {
+            HandleGameCommand("move east");
+            return true;
+        } else if (event == ftxui::Event::Character(' ')) {
+            HandleGameCommand("interact");
+            return true;
+        } else if (event == ftxui::Event::Character('q') || event == ftxui::Event::Character('Q')) {
+            HandleGameCommand("switch_next_member");
+            return true;
+        } else if (event == ftxui::Event::Character('e') || event == ftxui::Event::Character('E')) {
+            HandleGameCommand("switch_prev_member");
+            return true;
+        } else if (event == ftxui::Event::Escape) {
+            if (navigation_callback_) {
+                navigation_callback_(NavigationRequest(NavigationAction::QUIT_GAME));
+            }
+            return true;
+        }
+        return false;
+    });
 }

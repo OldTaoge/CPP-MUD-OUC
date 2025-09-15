@@ -12,6 +12,7 @@
 #include <vector>
 #include <memory>
 #include <set>
+#include <functional>
 
 // 前向声明
 class Player;
@@ -34,6 +35,9 @@ public:
     
     // 辅助方法：刷新队伍状态显示
     void RefreshTeamDisplay();
+    
+    // 重新构建底部按钮列表（用于设置更改后刷新）
+    void RebuildBottomButtons();
     
     // 清空游戏消息和聊天消息
     void ClearAllMessages();

@@ -1,36 +1,45 @@
 // =============================================
 // 文件: settings.cpp
-// 描述: 设置界面实现。当前仅包含返回按钮与占位文本。
+// 描述: 设置界面实现。提供AI开关等设置选项。
 // =============================================
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/dom/elements.hpp>
 #include <string>
+#include <vector>
 #include "../utils/utils.hpp"
+#include "../utils/global_settings.hpp"
 #include "settings.hpp"
 
 using namespace ftxui;
 
 SettingsScreen::SettingsScreen() : source_screen_("MainMenu") {
-    std::string content = "暂无设置可选";
+    // 初始化AI开关状态为全局设置的值
+    ai_toggle_selected_ = GlobalSettings::IsAIEnabled() ? 1 : 0;
+    
+    // 创建AI开关组件
+    ai_toggle_options_ = {"AI Disabled", "AI Enabled"};
+    ai_toggle_ = Toggle(ai_toggle_options_, &ai_toggle_selected_);
 
     auto back_button = Button("返回", [this] {
         this->HandleSelection(0); // 0 表示返回
     });
 
-    // 预创建内容元素，避免每次渲染时重新创建
-    auto content_lines = Utils::split_string(content);
-    Elements content_elements;
-    for (const auto& line : content_lines) {
-        content_elements.push_back(text(line));
-    }
-    content_element_ = vbox(std::move(content_elements));
+    // 创建设置选项容器
+    auto settings_container = Container::Vertical({
+        ai_toggle_,
+        back_button
+    });
 
-    component_ = Renderer(back_button, [this, back_button] {
+    component_ = Renderer(settings_container, [this, back_button] {
         return vbox({
-                    text("设置") | hcenter,
+                    text("设置") | hcenter | bold,
                     separator(),
-                    content_element_ | hcenter,
+                    text("AI智能建议:") | color(Color::Cyan),
+                    ai_toggle_->Render(),
+                    separator(),
+                    text("注意: AI建议的响应速度会受到互联网连接影响；AI建议的回答可能不准确，请谨慎使用。；") | 
+                        color(Color::GrayLight) | dim,
                     separator(),
                     back_button->Render() | hcenter,
                 }) | border;
@@ -50,9 +59,16 @@ void SettingsScreen::HandleSelection(int selected_option) {
     
     switch (selected_option) {
         case 0: // 返回到来源界面
+            // 在返回前更新全局设置
+            UpdateGlobalSettings();
             navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, source_screen_));
             break;
         default:
             break;
     }
+}
+
+void SettingsScreen::UpdateGlobalSettings() {
+    // 将当前设置状态同步到全局设置
+    GlobalSettings::SetAIEnabled(ai_toggle_selected_ == 1);
 }

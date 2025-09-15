@@ -10,6 +10,7 @@
 #include <string>
 #include <thread>  // 用于sleep_for
 #include <chrono>  // 用于时间相关操作
+#include <functional>
 
 #include "screens/mainmenu.hpp"
 #include "screens/illustrateMenu.hpp"
@@ -177,6 +178,9 @@ void ScreenManager::SwitchToScreen(const std::string& screenName) {
     if (screenName == "Gameplay" && screens_.count("Gameplay")) {
         GameplayScreen* gameplayScreen = dynamic_cast<GameplayScreen*>(screens_["Gameplay"]);
         if (gameplayScreen) {
+            // 重新构建底部按钮（用于设置更改后刷新AI按钮）
+            gameplayScreen->RebuildBottomButtons();
+            
             gameplayScreen->UpdateMapDisplay();
             // 更新玩家信息显示
             gameplayScreen->UpdatePlayerInfo(game_.getPlayer());

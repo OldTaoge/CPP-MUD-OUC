@@ -50,8 +50,8 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Settings"));
     }));
     bottom_action_buttons_.push_back(ftxui::Button("智能建议", [this] {
-        // 流式显示：新建一条占位消息，然后持续追加文本
-        UpdateGameStatus("[AI建议] ");
+        // 采集上下文并调用LLM（避免阻塞UI，使用后台线程，完成后刷新消息）
+        UpdateGameStatus("[AI] 正在分析…");
         auto context_builder = [this]() {
             std::stringstream ss;
             ss << "玩家: " << player_name_ << "\n";
@@ -66,15 +66,9 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
             return ss.str();
         };
         std::thread([this, context_builder]() {
-            // 记录开始前的最后消息索引
-            size_t target_index = game_messages_.empty() ? 0 : (game_messages_.size() - 1);
-            auto append_delta = [this, target_index](const std::string& delta) {
-                if (delta.empty()) return; // 完成信号，这里无需处理
-                if (game_messages_.empty()) return;
-                if (target_index >= game_messages_.size()) return;
-                game_messages_[target_index] += delta;
-            };
-            StreamOpenAISuggestion(context_builder(), append_delta);
+            auto suggestion = RequestOpenAISuggestion(context_builder());
+            last_llm_suggestion_ = suggestion;
+            UpdateGameStatus(std::string("[AI建议] ") + suggestion);
         }).detach();
     }));
     bottom_action_buttons_.push_back(ftxui::Button("保存", [this] {

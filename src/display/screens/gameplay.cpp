@@ -372,6 +372,8 @@ void GameplayScreen::RefreshTeamDisplay() {
 void GameplayScreen::ClearAllMessages() {
     game_messages_.clear();
     chat_messages_.clear();
+    // 重置完成提示标记，便于新一轮游玩再次提示
+    completion_announced_ = false;
 }
 
 // 刷新地图显示与当前位置说明，必要时触发首次到访剧情提示
@@ -389,6 +391,15 @@ void GameplayScreen::UpdateMapDisplay() {
         
         // 获取当前位置信息
         current_block_info_ = mapManager.getCurrentCellInfo();
+        
+        // 检查是否地图（本章）探索完成，若首次达成则提示
+        if (!completion_announced_ && mapManager.isMapCompleted()) {
+            UpdateGameStatus(" ");
+            UpdateGameStatus("===============================");
+            UpdateGameStatus("恭喜你已经完成本章探索，请期待软件更新");
+            UpdateGameStatus("===============================");
+            completion_announced_ = true;
+        }
         // 进入区块时尝试触发剧情
         auto currentBlock = mapManager.getCurrentBlock();
         if (currentBlock) {
@@ -504,35 +515,42 @@ void GameplayScreen::MaybeShowBlockStory(const std::string& block_name) {
         UpdateGameStatus("提示：W/A/S/D 移动，空格交互");
         UpdateGameStatus("你与同伴从坠星山谷出发，沿途探索前行。");
         UpdateGameStatus("[剧情·启程·坠星山谷]");
+        UpdateGameStatus(" ");
     } else if (block_name.find("安柏的营地") != std::string::npos) {
         UpdateGameStatus(" ");
         UpdateGameStatus("少女名为安柏，身为侦察骑士的她提出护送你们前往蒙德");
         UpdateGameStatus("一位轻盈的少女突然出现，挡住了你的去路。");
         UpdateGameStatus("[剧情·星落湖]");
+        UpdateGameStatus(" ");
     } else if (block_name.find("史莱姆栖息地") != std::string::npos) {
         UpdateGameStatus(" ");
         UpdateGameStatus("提示：到达魔物面前，使用空格键击败它");
         UpdateGameStatus("林间回荡呢喃，你短暂目击神秘身影与巨兽的交流。");
         UpdateGameStatus("[剧情·林间回响]");
+        UpdateGameStatus(" ");
     } else if (block_name.find("蒙德城") != std::string::npos) {
         UpdateGameStatus(" ");
         UpdateGameStatus("提示：在设置/背包/队伍界面完善配置后再继续主线");
         UpdateGameStatus("你抵达城邦入口，冒险服务与补给在城内更完善。");
         UpdateGameStatus("[剧情·自由之都·城门]");
+        UpdateGameStatus(" ");
     } else if (block_name.find("千风神殿") != std::string::npos) {
         UpdateGameStatus(" ");
         UpdateGameStatus("提示：观察环境要素，借助交互点推进");
         UpdateGameStatus("遗迹深处存在风之结晶的残留，需破坏以削弱异动。");
         UpdateGameStatus("[剧情·遗祠调查·千风神殿]");
+        UpdateGameStatus(" ");
     } else if (block_name.find("风啸山坡") != std::string::npos) {
         UpdateGameStatus(" ");
         UpdateGameStatus("提示：元素克制与队伍切换能更高效地推进");
         UpdateGameStatus("与学识之士协作，确认雷元素设施并清理结晶源。");
         UpdateGameStatus("[剧情·遗祠调查·风啸山坡]");
+        UpdateGameStatus(" ");
     } else if (block_name.find("七天神像") != std::string::npos) {
         UpdateGameStatus(" ");
         UpdateGameStatus("提示：在神像附近多尝试交互，留意系统反馈");
         UpdateGameStatus("你感到体内与风产生呼应。或许应沿大道前往城邦打听情报。");
         UpdateGameStatus("[剧情·神像回应]");
+        UpdateGameStatus(" ");
     }
 }

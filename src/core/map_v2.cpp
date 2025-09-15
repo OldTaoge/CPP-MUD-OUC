@@ -316,10 +316,14 @@ void StatueOfSevenBlock::initializeExits() {
 InteractionResult StatueOfSevenBlock::handleActivate(Player& player, int x, int y) {
     if (!activated_) {
         activated_ = true;
+        // 若宝箱已开，则两项条件均满足，标记区块完成
+        if (chestOpened_) {
+            state_ = BlockState::COMPLETED;
+        }
         return InteractionResult(true, 
             "你激活了七天神像！\n"
             "风元素的力量涌入你的身体，你获得了风元素能力。\n"
-            "现在你可以使用风元素技能了！");
+            "现在你可以使用风元素技能了！", {}, state_ == BlockState::COMPLETED);
     }
     return InteractionResult(true, "七天神像已经激活过了");
 }

@@ -70,6 +70,9 @@ private:
     
     // 游戏对象引用
     Game* game_;
+    
+    // 一次性完成提示标记（避免重复提示）
+    bool completion_announced_ = false;
 };
 
 #endif //CPP_MUD_OUC_GAMEPLAY_HPP

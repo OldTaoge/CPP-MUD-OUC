@@ -190,7 +190,7 @@ void ScreenManager::SwitchToScreen(const std::string& screenName) {
                 const auto& player = game_.getPlayer();
                 if (player.level == 1 && player.experience == 0) {
                     gameplayScreen->UpdateGameStatus("欢迎来到新的冒险！");
-                    gameplayScreen->UpdateGameStatus("使用 WASD 移动，空格键交互，T 打开工具菜单");
+                    gameplayScreen->UpdateGameStatus("使用 WASD 移动，空格键交互");
                 } else {
                     gameplayScreen->UpdateGameStatus("游戏数据已加载完成");
                 }

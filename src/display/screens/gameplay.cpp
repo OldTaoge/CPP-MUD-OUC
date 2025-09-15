@@ -12,6 +12,9 @@
 #include <sstream>
 #include <algorithm>
 #include <set>
+#include <thread>
+
+#include "../../utils/llm_client.hpp"
 
 // 构造：初始化主游戏界面（地图/消息/状态与快捷操作）
 GameplayScreen::GameplayScreen(Game* game) : game_(game) {
@@ -45,6 +48,34 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
     }));
     bottom_action_buttons_.push_back(ftxui::Button("设置", [this] {
         if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SWITCH_SCREEN, "Settings"));
+    }));
+    bottom_action_buttons_.push_back(ftxui::Button("智能建议", [this] {
+        // 流式显示：新建一条占位消息，然后持续追加文本
+        UpdateGameStatus("[AI建议] ");
+        auto context_builder = [this]() {
+            std::stringstream ss;
+            ss << "玩家: " << player_name_ << "\n";
+            ss << "等级:" << player_level_ << ", HP:" << player_hp_ << "/" << player_max_hp_ << "\n";
+            ss << "位置: " << current_block_info_ << "\n";
+            ss << "近期消息:\n";
+            int cnt = 0;
+            for (auto it = game_messages_.rbegin(); it != game_messages_.rend() && cnt < 6; ++it, ++cnt) {
+                ss << "- " << *it << "\n";
+            }
+            ss << "请给出下一步操作建议。";
+            return ss.str();
+        };
+        std::thread([this, context_builder]() {
+            // 记录开始前的最后消息索引
+            size_t target_index = game_messages_.empty() ? 0 : (game_messages_.size() - 1);
+            auto append_delta = [this, target_index](const std::string& delta) {
+                if (delta.empty()) return; // 完成信号，这里无需处理
+                if (game_messages_.empty()) return;
+                if (target_index >= game_messages_.size()) return;
+                game_messages_[target_index] += delta;
+            };
+            StreamOpenAISuggestion(context_builder(), append_delta);
+        }).detach();
     }));
     bottom_action_buttons_.push_back(ftxui::Button("保存", [this] {
         if (navigation_callback_) navigation_callback_(NavigationRequest(NavigationAction::SAVE_GAME));

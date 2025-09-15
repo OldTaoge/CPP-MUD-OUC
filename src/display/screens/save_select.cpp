@@ -206,10 +206,10 @@ Element SaveSelectScreen::CreateInputDialog() {
         displayText = "在此输入存档名称...";
     }
     
-    // 创建输入框，预留足够的空间（支持中文显示）
+    // 创建输入框，预留足够的空间
     auto inputBox = text("名称: " + displayText) | 
                    border | 
-                   size(WIDTH, GREATER_THAN, 60) |  // 增加宽度以支持中文
+                   size(WIDTH, GREATER_THAN, 60) |  // 增加宽度
                    size(HEIGHT, EQUAL, 3) |         // 高度3行
                    hcenter;
     
@@ -225,7 +225,7 @@ Element SaveSelectScreen::CreateInputDialog() {
     
     dialog.push_back(hbox(buttons) | hcenter);
     dialog.push_back(separator());
-    dialog.push_back(text("支持中文输入  Enter: 确认  Esc: 取消") | hcenter | color(Color::GrayLight));
+    dialog.push_back(text("Enter: 确认  Esc: 取消") | hcenter | color(Color::GrayLight));
     
     return vbox(dialog) | border | hcenter | vcenter | bgcolor(Color::Black);
 }

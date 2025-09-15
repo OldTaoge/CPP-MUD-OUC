@@ -73,6 +73,9 @@ private:
     
     // 一次性完成提示标记（避免重复提示）
     bool completion_announced_ = false;
+
+    // 最近一次LLM建议缓存
+    std::string last_llm_suggestion_;
 };
 
 #endif //CPP_MUD_OUC_GAMEPLAY_HPP

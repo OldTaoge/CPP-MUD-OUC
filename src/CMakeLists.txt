@@ -41,7 +41,9 @@ add_executable(CPP_MUD_OUC core/main.cpp
         display/screens/save_select.cpp
         display/screens/save_select.hpp
         utils/utils.cpp
-        utils/utils.hpp)
+        utils/utils.hpp
+        utils/llm_client.cpp
+        utils/llm_client.hpp)
 
 target_include_directories(CPP_MUD_OUC PRIVATE vendor)
 
@@ -52,5 +54,9 @@ target_link_libraries(CPP_MUD_OUC
         PRIVATE ftxui::dom
         PRIVATE ftxui::component
 )
+
+if (WIN32)
+    target_link_libraries(CPP_MUD_OUC PRIVATE winhttp)
+endif()
 
 

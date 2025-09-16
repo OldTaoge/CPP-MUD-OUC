@@ -107,7 +107,8 @@ std::vector<std::string> MapBlock::render() const {
     std::vector<std::string> result;
     
     // 直接渲染地图网格 - 使用等宽ASCII字符（区块名称将在标题栏显示）
-    result.push_back("+---+---+---+---+---+");
+    // 使用更清晰的边框字符，确保在各种终端中都能正确显示
+    result.push_back("+---+---+---+---+---+---+---+---+---+");
     for (int y = 0; y < BLOCK_SIZE; ++y) {
         std::string line = "|";
         for (int x = 0; x < BLOCK_SIZE; ++x) {
@@ -134,10 +135,10 @@ std::vector<std::string> MapBlock::render() const {
         }
         result.push_back(line);
         if (y < BLOCK_SIZE - 1) {
-            result.push_back("+---+---+---+---+---+");
+            result.push_back("+---+---+---+---+---+---+---+---+---+");
         }
     }
-    result.push_back("+---+---+---+---+---+");
+    result.push_back("+---+---+---+---+---+---+---+---+---+");
     
     // 添加图例说明 - 包含高亮提示
     result.push_back("");

@@ -227,9 +227,9 @@ GameplayScreen::GameplayScreen(Game* game) : game_(game) {
         
         auto right_box = ftxui::vbox(right) | ftxui::border | ftxui::color(ftxui::Color::Magenta);
 
-        // 按 7:3 比例分配宽度
-        int left_w = std::max(20, dims.dimx * 5 / 10);
-        int right_w = std::max(10, dims.dimx - left_w);
+        // 按 7:3 比例分配宽度，确保地图有足够空间显示完整边框
+        int left_w = std::max(30, dims.dimx * 5 / 10);  // 增加最小宽度到30，确保地图边框完整显示
+        int right_w = std::max(15, dims.dimx - left_w);  // 相应增加右侧最小宽度
         auto left_sized = left_box | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, left_w);
         auto right_sized = right_box | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, right_w);
 
@@ -801,9 +801,9 @@ void GameplayScreen::RebuildBottomButtons() {
         
         auto right_box = ftxui::vbox(right) | ftxui::border | ftxui::color(ftxui::Color::Magenta);
 
-        // 按 7:3 比例分配宽度
-        int left_w = std::max(20, dims.dimx * 5 / 10);
-        int right_w = std::max(10, dims.dimx - left_w);
+        // 按 7:3 比例分配宽度，确保地图有足够空间显示完整边框
+        int left_w = std::max(30, dims.dimx * 5 / 10);  // 增加最小宽度到30，确保地图边框完整显示
+        int right_w = std::max(15, dims.dimx - left_w);  // 相应增加右侧最小宽度
         auto left_sized = left_box | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, left_w);
         auto right_sized = right_box | ftxui::size(ftxui::WIDTH, ftxui::EQUAL, right_w);
 
